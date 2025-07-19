@@ -60,7 +60,7 @@ if st.button("Générer le planning"):
 
         st.success(f"Planning généré pour {len(working_days)} jours ouvrés.")
         if public_holidays:
-            st.info(f"{len(public_holidays)} jours fériés ignorés : " + ", ".join(
+            st.info(f"{len(public_holidays)} jour(s) férié(s) ignoré(s) : " + ", ".join(
                 [f"{d.strftime('%d/%m')} ({n})" for d, n in public_holidays]
             ))
 
