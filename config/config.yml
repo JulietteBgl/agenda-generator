@@ -7,10 +7,6 @@ majorelle:
       available_weekdays: [0, 3, 4]  # lundi, jeudi, vendredi
     CG:
       available_weekdays: [2, 4]  # mercredi, vendredi
-    MS:
-      available_weekdays: [1, 4]  # mardi, vendredi
-    RJ:
-      available_weekdays: [1, 2, 4]  # mardi, mercredi, vendredi
     MB:
       available_weekdays: [2, 4]  # mercredi, vendredi
 
