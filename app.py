@@ -1,7 +1,7 @@
 # app.py
 import streamlit as st
 import datetime
-from utils.export_agenda import to_excel, to_csv
+from utils.export_agenda import to_excel
 from utils.tools import (
     load_config, get_working_days, allocate_days,
     schedule_to_dataframe, daterange
@@ -76,7 +76,6 @@ if st.session_state.df_schedule is not None:
     st.session_state.df_schedule = edited_df
 
     st.download_button("Télécharger Excel", data=to_excel(edited_df), file_name="planning_detaille.xlsx")
-    st.download_button("Télécharger CSV", data=to_csv(edited_df), file_name="planning_detaille.csv")
 
 if st.session_state.df_schedule_simple is not None:
     st.subheader("Planning simplifié (par lieu uniquement)")
