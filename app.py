@@ -1,11 +1,10 @@
 import streamlit as st
 import datetime
 
-from utils.create_calendar import create_calendar_editor
-from utils.export_agenda import to_excel
+from utils.create_calendar import create_calendar_editor, create_visual_calendar
 from utils.tools import (
     load_config, get_working_days, allocate_days,
-    schedule_to_dataframe, daterange, format_schedule_for_visual
+    schedule_to_dataframe, daterange
 )
 
 st.title("Planning radiologues")
@@ -72,60 +71,10 @@ if st.session_state.df_schedule is not None:
         excel_name="planning_detaille"
     )
 
-# 📅 Affichage du planning
-    st.subheader("Vue hebdomadaire visuelle")
-
-    calendar = format_schedule_for_visual(st.session_state.df_schedule)
-
-    day_labels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-
-    for (_, month_label), weeks in sorted(calendar.items()):
-        st.markdown(f"### 📅 {month_label.capitalize()}")
-
-        # En-tête des jours
-        header_cols = st.columns(5)
-        for i, day in enumerate(day_labels):
-            with header_cols[i]:
-                st.markdown(f"**{day}**")
-
-        # Semaine par semaine
-        for _, days in sorted(weeks.items()):
-
-            cols = st.columns(5)
-            for idx, day in enumerate(day_labels):
-                with cols[idx]:
-                    if day in days:
-                        st.markdown(
-                            f"""
-                            <div style="
-                                border: 1px solid #ccc;
-                                border-radius: 6px;
-                                padding: 6px;
-                                min-height: 60px;
-                                background-color: #f9f9f9;
-                                margin-bottom: 0px;
-                            ">
-                                <div style='font-size: 12px; color: gray; font-style: italic'>
-                                    {days[day]['date']}
-                                </div>
-                                <div style='margin-top: 4px; font-size: 15px'>
-                                    {days[day]['aff1']}
-                                </div>
-                                <div style='margin-top: 2px; font-size: 15px'>
-                                    {days[day]['aff2']}
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        st.markdown(
-                            "<div style='border: 1px solid #eee; border-radius: 6px; min-height: 60px; "
-                            "background-color: #f0f0f0; color: #bbb; padding: 6px'>-</div>",
-                            unsafe_allow_html=True
-                        )
-
-            st.markdown('</div>', unsafe_allow_html=True)
+    create_visual_calendar(
+        source=st.session_state.df_schedule,
+        title="Vue hebdomadaire visuelle"
+    )
 
 
 if st.session_state.df_schedule_simple is not None:
@@ -135,57 +84,7 @@ if st.session_state.df_schedule_simple is not None:
         excel_name="planning_simple"
     )
 
-# 📅 Affichage du planning
-    st.subheader("Vue hebdomadaire visuelle")
-
-    calendar = format_schedule_for_visual(st.session_state.df_schedule_simple)
-
-    day_labels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-
-    for (_, month_label), weeks in sorted(calendar.items()):
-        st.markdown(f"### 📅 {month_label.capitalize()}")
-
-        # En-tête des jours
-        header_cols = st.columns(5)
-        for i, day in enumerate(day_labels):
-            with header_cols[i]:
-                st.markdown(f"**{day}**")
-
-        # Semaine par semaine
-        for _, days in sorted(weeks.items()):
-
-            cols = st.columns(5)
-            for idx, day in enumerate(day_labels):
-                with cols[idx]:
-                    if day in days:
-                        st.markdown(
-                            f"""
-                            <div style="
-                                border: 1px solid #ccc;
-                                border-radius: 6px;
-                                padding: 6px;
-                                min-height: 60px;
-                                background-color: #f9f9f9;
-                                margin-bottom: 0px;
-                            ">
-                                <div style='font-size: 12px; color: gray; font-style: italic'>
-                                    {days[day]['date']}
-                                </div>
-                                <div style='margin-top: 4px; font-size: 15px'>
-                                    {days[day]['aff1']}
-                                </div>
-                                <div style='margin-top: 2px; font-size: 15px'>
-                                    {days[day]['aff2']}
-                                </div>
-                            </div>
-                            """,
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        st.markdown(
-                            "<div style='border: 1px solid #eee; border-radius: 6px; min-height: 60px; "
-                            "background-color: #f0f0f0; color: #bbb; padding: 6px'>-</div>",
-                            unsafe_allow_html=True
-                        )
-
-            st.markdown('</div>', unsafe_allow_html=True)
+    create_visual_calendar(
+        source=st.session_state.df_schedule,
+        title="Vue hebdomadaire visuelle"
+    )
