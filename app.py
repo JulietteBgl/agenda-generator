@@ -85,6 +85,6 @@ if st.session_state.df_schedule_simple is not None:
     )
 
     create_visual_calendar(
-        source=st.session_state.df_schedule,
+        source=st.session_state.df_schedule_simple,
         title="Vue hebdomadaire visuelle"
     )
