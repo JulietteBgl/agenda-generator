@@ -1,7 +1,7 @@
-# app.py
 import streamlit as st
 import datetime
 
+from utils.create_calendar import create_calendar_editor
 from utils.export_agenda import to_excel
 from utils.tools import (
     load_config, get_working_days, allocate_days,
@@ -58,8 +58,6 @@ if st.button("Générer le planning"):
 
         st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
         st.session_state.df_schedule_simple = schedule_to_dataframe(schedule_simple)
-        # st.session_state.df_schedule_simple2 = schedule_to_dataframe(schedule_simple)
-        # st.session_state.df_schedule_2 = schedule_to_dataframe(schedule_full)
 
         st.success(f"Planning généré pour {len(working_days)} jours ouvrés.")
         if public_holidays:
@@ -68,21 +66,13 @@ if st.button("Générer le planning"):
             ))
 
 if st.session_state.df_schedule is not None:
-    st.subheader("Planning détaillé (lieu + médecin si applicable)")
-    edited_df = st.data_editor(
-        st.session_state.df_schedule,
-        column_config={"Date": st.column_config.TextColumn(disabled=True)},
-        use_container_width=True,
-        num_rows="dynamic",
-        key="planning_editor_full"
+    create_calendar_editor(
+        source=st.session_state.df_schedule,
+        title="Planning détaillé (lieu + médecin si applicable)",
+        excel_name="planning_detaille"
     )
-    st.session_state.df_schedule = edited_df
-
-    st.download_button("Télécharger Excel", data=to_excel(edited_df), file_name="planning_detaille.xlsx")
-
 
 # 📅 Affichage du planning
-if st.session_state.df_schedule is not None:
     st.subheader("Vue hebdomadaire visuelle")
 
     calendar = format_schedule_for_visual(st.session_state.df_schedule)
@@ -139,20 +129,13 @@ if st.session_state.df_schedule is not None:
 
 
 if st.session_state.df_schedule_simple is not None:
-    st.subheader("Planning simplifié (par lieu uniquement)")
-    edited_simple_df = st.data_editor(
-        st.session_state.df_schedule_simple,
-        column_config={"Date": st.column_config.TextColumn(disabled=True)},
-        use_container_width=True,
-        num_rows="dynamic",
-        key="planning_editor_simple"
+    create_calendar_editor(
+        source=st.session_state.df_schedule_simple,
+        title="Planning simplifié (par lieu uniquement)",
+        excel_name="planning_simple"
     )
-    st.session_state.df_schedule_simple = edited_simple_df
-
-    st.download_button("Télécharger Excel (simplifié)", data=to_excel(edited_simple_df), file_name="planning_simple.xlsx")
 
 # 📅 Affichage du planning
-if st.session_state.df_schedule_simple is not None:
     st.subheader("Vue hebdomadaire visuelle")
 
     calendar = format_schedule_for_visual(st.session_state.df_schedule_simple)
