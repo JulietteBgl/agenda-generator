@@ -112,3 +112,32 @@ def schedule_to_dataframe(schedule):
             "Affectation 2": assignments[1] if len(assignments) > 1 else ""
         })
     return pd.DataFrame(rows)
+
+
+def format_schedule_for_visual(schedule):
+    schedule["Date"] = pd.to_datetime(schedule["Date"])
+    schedule = schedule[schedule["Date"].dt.weekday < 5]  # Lundi à Vendredi
+
+    result = {}
+    for _, row in schedule.iterrows():
+        date = row["Date"]
+        month_label = date.strftime('%B %Y')           # "Juillet 2025"
+        month_key = date.replace(day=1).date()         # datetime.date(2025, 7, 1) pour tri chronologique
+        weekday = date.strftime('%A')
+        day_fr = {
+            'Monday': 'Lundi',
+            'Tuesday': 'Mardi',
+            'Wednesday': 'Mercredi',
+            'Thursday': 'Jeudi',
+            'Friday': 'Vendredi'
+        }[weekday]
+
+        display = {
+            "date": date.strftime('%d/%m'),
+            "aff1": row.get("Affectation 1", ""),
+            "aff2": row.get("Affectation 2", "")
+        }
+
+        result.setdefault((month_key, month_label), {}).setdefault(date.isocalendar().week, {})[day_fr] = display
+
+    return result
