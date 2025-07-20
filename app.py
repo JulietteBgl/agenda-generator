@@ -1,10 +1,11 @@
 # app.py
 import streamlit as st
 import datetime
+
 from utils.export_agenda import to_excel
 from utils.tools import (
     load_config, get_working_days, allocate_days,
-    schedule_to_dataframe, daterange
+    schedule_to_dataframe, daterange, format_schedule_for_visual
 )
 
 st.title("Planning radiologues")
@@ -42,9 +43,9 @@ with st.expander("Ajouter des congés (plages ou dates)", expanded=False):
                 )
                 person_cfg['holidays'] = list(set([d.strip() for d in manual_days.split(",") if d.strip()]))
 
-if 'df_schedule' not in st.session_state:
-    st.session_state.df_schedule = None
-    st.session_state.df_schedule_simple = None
+for key in ["df_schedule", "df_schedule_simple"]:
+    if key not in st.session_state:
+        st.session_state[key] = None
 
 if st.button("Générer le planning"):
     if start_date > end_date:
@@ -57,6 +58,8 @@ if st.button("Générer le planning"):
 
         st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
         st.session_state.df_schedule_simple = schedule_to_dataframe(schedule_simple)
+        # st.session_state.df_schedule_simple2 = schedule_to_dataframe(schedule_simple)
+        # st.session_state.df_schedule_2 = schedule_to_dataframe(schedule_full)
 
         st.success(f"Planning généré pour {len(working_days)} jours ouvrés.")
         if public_holidays:
@@ -77,6 +80,64 @@ if st.session_state.df_schedule is not None:
 
     st.download_button("Télécharger Excel", data=to_excel(edited_df), file_name="planning_detaille.xlsx")
 
+
+# 📅 Affichage du planning
+if st.session_state.df_schedule is not None:
+    st.subheader("Vue hebdomadaire visuelle")
+
+    calendar = format_schedule_for_visual(st.session_state.df_schedule)
+
+    day_labels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+
+    for (_, month_label), weeks in sorted(calendar.items()):
+        st.markdown(f"### 📅 {month_label.capitalize()}")
+
+        # En-tête des jours
+        header_cols = st.columns(5)
+        for i, day in enumerate(day_labels):
+            with header_cols[i]:
+                st.markdown(f"**{day}**")
+
+        # Semaine par semaine
+        for _, days in sorted(weeks.items()):
+
+            cols = st.columns(5)
+            for idx, day in enumerate(day_labels):
+                with cols[idx]:
+                    if day in days:
+                        st.markdown(
+                            f"""
+                            <div style="
+                                border: 1px solid #ccc;
+                                border-radius: 6px;
+                                padding: 6px;
+                                min-height: 60px;
+                                background-color: #f9f9f9;
+                                margin-bottom: 0px;
+                            ">
+                                <div style='font-size: 12px; color: gray; font-style: italic'>
+                                    {days[day]['date']}
+                                </div>
+                                <div style='margin-top: 4px; font-size: 15px'>
+                                    {days[day]['aff1']}
+                                </div>
+                                <div style='margin-top: 2px; font-size: 15px'>
+                                    {days[day]['aff2']}
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.markdown(
+                            "<div style='border: 1px solid #eee; border-radius: 6px; min-height: 60px; "
+                            "background-color: #f0f0f0; color: #bbb; padding: 6px'>-</div>",
+                            unsafe_allow_html=True
+                        )
+
+            st.markdown('</div>', unsafe_allow_html=True)
+
+
 if st.session_state.df_schedule_simple is not None:
     st.subheader("Planning simplifié (par lieu uniquement)")
     edited_simple_df = st.data_editor(
@@ -89,4 +150,59 @@ if st.session_state.df_schedule_simple is not None:
     st.session_state.df_schedule_simple = edited_simple_df
 
     st.download_button("Télécharger Excel (simplifié)", data=to_excel(edited_simple_df), file_name="planning_simple.xlsx")
-    st.download_button("Télécharger CSV (simplifié)", data=to_csv(edited_simple_df), file_name="planning_simple.csv")
+
+# 📅 Affichage du planning
+if st.session_state.df_schedule_simple is not None:
+    st.subheader("Vue hebdomadaire visuelle")
+
+    calendar = format_schedule_for_visual(st.session_state.df_schedule_simple)
+
+    day_labels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
+
+    for (_, month_label), weeks in sorted(calendar.items()):
+        st.markdown(f"### 📅 {month_label.capitalize()}")
+
+        # En-tête des jours
+        header_cols = st.columns(5)
+        for i, day in enumerate(day_labels):
+            with header_cols[i]:
+                st.markdown(f"**{day}**")
+
+        # Semaine par semaine
+        for _, days in sorted(weeks.items()):
+
+            cols = st.columns(5)
+            for idx, day in enumerate(day_labels):
+                with cols[idx]:
+                    if day in days:
+                        st.markdown(
+                            f"""
+                            <div style="
+                                border: 1px solid #ccc;
+                                border-radius: 6px;
+                                padding: 6px;
+                                min-height: 60px;
+                                background-color: #f9f9f9;
+                                margin-bottom: 0px;
+                            ">
+                                <div style='font-size: 12px; color: gray; font-style: italic'>
+                                    {days[day]['date']}
+                                </div>
+                                <div style='margin-top: 4px; font-size: 15px'>
+                                    {days[day]['aff1']}
+                                </div>
+                                <div style='margin-top: 2px; font-size: 15px'>
+                                    {days[day]['aff2']}
+                                </div>
+                            </div>
+                            """,
+                            unsafe_allow_html=True
+                        )
+                    else:
+                        st.markdown(
+                            "<div style='border: 1px solid #eee; border-radius: 6px; min-height: 60px; "
+                            "background-color: #f0f0f0; color: #bbb; padding: 6px'>-</div>",
+                            unsafe_allow_html=True
+                        )
+
+            st.markdown('</div>', unsafe_allow_html=True)
