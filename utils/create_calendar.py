@@ -33,26 +33,64 @@ def format_schedule_for_visual(schedule):
 
     return result
 
+
 def get_start_and_end_date():
-    current_date=datetime.today() + rd(months=1)
+    """
+    Calculates the start and end dates based on a quarterly cycle.
+    The quarters begin in January, April, July, and October.
 
-    current_year=current_date.year
-    current_month=current_date.month
-    start_date=datetime(current_year, current_month, 1)
+    Returns:
+        tuple: A tuple containing two datetime objects: (start_date, end_date)
+    """
 
-    date_lag_3m=current_date + rd(months=3)
-    year_lag_3m=date_lag_3m.year
-    month_lag_3m = date_lag_3m.month
-    day_end_date=calendar.monthrange(year_lag_3m, month_lag_3m)[1]
-    end_date = datetime(year_lag_3m, month_lag_3m, day_end_date)
+    quarter_start_months = [1, 4, 7, 10]
+
+    current_date = datetime.today()
+    current_year = current_date.year
+    current_month = current_date.month
+
+    # Determine the correct start month for the next quarter
+    start_month = None
+    start_year = current_year
+
+    for month_val in quarter_start_months:
+        if current_month < month_val:
+            start_month = month_val
+            break
+
+    # If current_month is past the last quarter start,
+    # the next quarter starts in January of the next year.
+    if start_month is None:
+        start_month = quarter_start_months[0]
+        start_year += 1
+
+    # Construct the start date
+    start_date = datetime(start_year, start_month, 1)
+
+    # The end date is the day before the next quarter's start date
+    end_date = start_date + rd(months=3) - rd(days=1)
 
     return start_date, end_date
 
-def create_date_dropdown_list(start_date):
+def create_date_dropdown_list(start_date, num_quarters=5):
+    """
+    Generates a list of dates, representing the start of subsequent quarters.
+
+    Args:
+        start_date (datetime): The initial date for the list.
+        num_quarters (int): The number of quarters to include in the list.
+                            Defaults to 5.
+
+    Returns:
+        list[datetime]: A list of datetime objects, each representing the start
+                        of a quarter.
+    """
     date_dropdown_list=[start_date]
-    for _ in range(10):
-        start_date=start_date + rd(months=1)
-        date_dropdown_list.append(start_date)
+    current_date = start_date
+
+    for _ in range(num_quarters):
+        current_date=current_date + rd(months=3)
+        date_dropdown_list.append(current_date)
     return date_dropdown_list
 
 def create_calendar_editor(source, title, excel_name):
