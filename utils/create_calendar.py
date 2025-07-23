@@ -1,7 +1,59 @@
 import streamlit as st
+import calendar
 from utils.export_agenda import to_excel
-from utils.tools import format_schedule_for_visual
+from dateutil.relativedelta import relativedelta as rd
+import pandas as pd
+from datetime import datetime
 
+def format_schedule_for_visual(schedule):
+    schedule["Date"] = pd.to_datetime(schedule["Date"])
+    schedule = schedule[schedule["Date"].dt.weekday < 5]
+
+    result = {}
+    for _, row in schedule.iterrows():
+        date = row["Date"]
+        month_label = date.strftime('%B %Y')
+        month_key = date.replace(day=1).date()
+        weekday = date.strftime('%A')
+        day_fr = {
+            'Monday': 'Lundi',
+            'Tuesday': 'Mardi',
+            'Wednesday': 'Mercredi',
+            'Thursday': 'Jeudi',
+            'Friday': 'Vendredi'
+        }[weekday]
+
+        display = {
+            "date": date.strftime('%d/%m'),
+            "aff1": row.get("Affectation 1", ""),
+            "aff2": row.get("Affectation 2", "")
+        }
+
+        result.setdefault((month_key, month_label), {}).setdefault(date.isocalendar().week, {})[day_fr] = display
+
+    return result
+
+def get_start_and_end_date():
+    current_date=datetime.today() + rd(months=1)
+
+    current_year=current_date.year
+    current_month=current_date.month
+    start_date=datetime(current_year, current_month, 1)
+
+    date_lag_3m=current_date + rd(months=3)
+    year_lag_3m=date_lag_3m.year
+    month_lag_3m = date_lag_3m.month
+    day_end_date=calendar.monthrange(year_lag_3m, month_lag_3m)[1]
+    end_date = datetime(year_lag_3m, month_lag_3m, day_end_date)
+
+    return start_date, end_date
+
+def create_date_dropdown_list(start_date):
+    date_dropdown_list=[start_date]
+    for _ in range(10):
+        start_date=start_date + rd(months=1)
+        date_dropdown_list.append(start_date)
+    return date_dropdown_list
 
 def create_calendar_editor(source, title, excel_name):
     st.subheader(title)
