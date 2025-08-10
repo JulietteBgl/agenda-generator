@@ -44,7 +44,7 @@ def choose_person_balanced(people_cfg, date, assigned_days, target_days):
     return available[0]
 
 
-def allocate_days(config, working_days, full=True):
+def allocate_days(config, working_days):
     total_slots = len(working_days) * 2
     demand = {k: v['nb_radiologists'] * 9 for k, v in config.items()}
     total_demand = sum(demand.values())
@@ -78,9 +78,9 @@ def allocate_days(config, working_days, full=True):
         if loc1 == loc2:
             continue
 
-        def format_slot(place_key, full_detail):
+        def format_slot(place_key):
             cfg = config[place_key]
-            if cfg.get("advanced_split") and full_detail:
+            if cfg.get("advanced_split"):
                 person = choose_person_balanced(
                     cfg['people'], day,
                     advanced_assignments[place_key],
@@ -94,8 +94,8 @@ def allocate_days(config, working_days, full=True):
             return cfg['name']
 
         schedule[day].extend([
-            format_slot(loc1, full),
-            format_slot(loc2, full)
+            format_slot(loc1),
+            format_slot(loc2)
         ])
         day_index += 1
 

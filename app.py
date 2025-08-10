@@ -76,8 +76,13 @@ if st.button("Générer le planning"):
     else:
         working_days, public_holidays = get_working_days(selected_date, end_date)
 
-        schedule_full = allocate_days(config, working_days, full=True)
-        schedule_simple = allocate_days(config, working_days, full=False)
+        schedule_full = allocate_days(config, working_days)
+        schedule_simple = schedule_full.copy()
+        for day, assignments in schedule_simple.items():
+            schedule_simple[day] = [
+                "Majo" if "majo" in val.lower() else val
+                for val in assignments
+            ]
 
         st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
         st.session_state.df_schedule_simple = schedule_to_dataframe(schedule_simple)
