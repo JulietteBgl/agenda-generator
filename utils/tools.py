@@ -1,9 +1,10 @@
 import yaml
-import random
 import datetime
-from collections import defaultdict
 import pandas as pd
 import holidays
+
+from collections import defaultdict
+from math import floor
 
 def load_config(yaml_path):
     with open(yaml_path, 'r', encoding='utf-8') as file:
@@ -34,7 +35,6 @@ def is_available(person_cfg, date):
         weekday in person_cfg.get('available_weekdays', list(range(5)))
     )
 
-
 def choose_person_balanced(people_cfg, date, assigned_days, target_days):
     available = [p for p, cfg in people_cfg.items()
                  if is_available(cfg, date) and assigned_days[p] < target_days[p]]
@@ -43,61 +43,108 @@ def choose_person_balanced(people_cfg, date, assigned_days, target_days):
     available.sort(key=lambda p: assigned_days[p])
     return available[0]
 
-
 def allocate_days(config, working_days):
+
     total_slots = len(working_days) * 2
-    demand = {k: v['nb_radiologists'] * 9 for k, v in config.items()}
-    total_demand = sum(demand.values())
-    slots_by_place = {k: round(d / total_demand * total_slots) for k, d in demand.items()}
-
-    slots = [place for place, count in slots_by_place.items() for _ in range(count)]
-    random.shuffle(slots)
-
     schedule = defaultdict(list)
-    day_index = 0
+
+    # 1) Quotas finaux par Largest Remainder (sur nb_radiologists)
+    weights = {k: max(0, int(v.get('nb_radiologists', 0))) for k, v in config.items()}
+    total_w = sum(weights.values())
+    if total_w == 0:
+        return schedule
+
+    raw = {k: weights[k] / total_w * total_slots for k in config}
+    base = {k: floor(raw[k]) for k in config}
+    assigned = sum(base.values())
+    remainder = total_slots - assigned
+    for k, _ in sorted(((k, raw[k] - base[k]) for k in config),
+                       key=lambda x: (-x[1], x[0])):
+        if remainder <= 0:
+            break
+        base[k] += 1
+        remainder -= 1
+    quotas = base
+
+    # 2) SWRR pour générer une séquence de sites (longueur = total_slots)
+    eff_weights = quotas.copy()
+    total_eff_w = sum(eff_weights.values())
+    current = {k: 0 for k in config}
+    remaining = quotas.copy()
+
+    seq = []
+    while len(seq) < total_slots:
+        # incrémente les scores pour ceux qui restent
+        for k in remaining:
+            if remaining[k] > 0:
+                current[k] += eff_weights.get(k, 0)
+        # choisit le meilleur
+        candidates = [k for k in remaining if remaining[k] > 0]
+        if not candidates:
+            break
+        best = max(candidates, key=lambda k: (current[k], k))  # stable
+        current[best] -= total_eff_w
+        remaining[best] -= 1
+        seq.append(best)
+
+    # 3) Prépare l’équilibrage par personne (advanced_split)
     advanced_assignments = {}
     target_days_by_person = {}
-
     for place, cfg in config.items():
         if cfg.get("advanced_split"):
-            people = cfg['people']
-            total = slots_by_place[place]
-            base = total // len(people)
-            extra = total % len(people)
-            target_days_by_person[place] = {
-                p: base + (1 if i < extra else 0)
-                for i, p in enumerate(people)
-            }
-            advanced_assignments[place] = defaultdict(int)
+            people = cfg.get('people', {})
+            total = quotas.get(place, 0)
+            if total > 0 and people:
+                base_p = total // len(people)
+                extra = total % len(people)
+                target_days_by_person[place] = {
+                    p: base_p + (1 if i < extra else 0)
+                    for i, p in enumerate(people)
+                }
+                advanced_assignments[place] = defaultdict(int)
 
-    for i in range(0, len(slots) - 1, 2):
-        if day_index >= len(working_days):
+    def format_slot(place_key, day):
+        cfg = config[place_key]
+        if cfg.get("advanced_split"):
+            person = choose_person_balanced(
+                cfg['people'], day,
+                advanced_assignments.get(place_key, defaultdict(int)),
+                target_days_by_person.get(place_key, {})
+            )
+            if person:
+                advanced_assignments[place_key][person] += 1
+                return f"{cfg['name']} - {person}"
+            else:
+                return f"{cfg['name']} - ??"
+        return cfg['name']
+
+    # 4) Compose les jours (2 créneaux/jour), en forçant pair_same_day si possible
+    idx = 0
+    for day in working_days:
+        if idx >= len(seq):
             break
-        day = working_days[day_index]
-        loc1, loc2 = slots[i], slots[i + 1]
-        if loc1 == loc2:
-            continue
 
-        def format_slot(place_key):
-            cfg = config[place_key]
-            if cfg.get("advanced_split"):
-                person = choose_person_balanced(
-                    cfg['people'], day,
-                    advanced_assignments[place_key],
-                    target_days_by_person[place_key]
-                )
-                if person:
-                    advanced_assignments[place_key][person] += 1
-                    return f"{cfg['name']} - {person}"
-                else:
-                    return f"{cfg['name']} - ??"
-            return cfg['name']
+        first = seq[idx]; idx += 1
+        second = None
 
-        schedule[day].extend([
-            format_slot(loc1),
-            format_slot(loc2)
-        ])
-        day_index += 1
+        if config[first].get("pair_same_day", False):
+            # Cherche la prochaine occurrence de `first` et l'avance pour la paire
+            j = idx
+            while j < len(seq) and seq[j] != first:
+                j += 1
+            if j < len(seq):
+                # Avance cette occurrence à la position 'idx'
+                seq.pop(j)
+                second = first
+            # sinon: pas d'autre slot pour ce site -> on prendra le next normal
+
+        if second is None:
+            if idx < len(seq):
+                second = seq[idx]; idx += 1
+
+        schedule[day].append(format_slot(first, day))
+        if second is not None:
+            schedule[day].append(format_slot(second, day))
 
     return schedule
 

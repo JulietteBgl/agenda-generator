@@ -9,23 +9,28 @@ majorelle:
       available_weekdays: [2, 4]  # mercredi, vendredi
     MB:
       available_weekdays: [2, 4]  # mercredi, vendredi
+  pair_same_day: False
 
 icl:
   name: 'ICL'
   advanced_split: False
   nb_radiologists: 3
+  pair_same_day: False
 
 radiolor:
   name: 'Radiolor'
   advanced_split: False
   nb_radiologists: 2
+  pair_same_day: True
 
 stdizier:
   name: 'St Dizier'
   advanced_split: False
   nb_radiologists: 4
+  pair_same_day: False
 
 jung:
   name: 'Jung'
   advanced_split: False
   nb_radiologists: 1
+  pair_same_day: False
