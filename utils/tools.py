@@ -10,11 +10,9 @@ def load_config(yaml_path):
     with open(yaml_path, 'r', encoding='utf-8') as file:
         return yaml.safe_load(file)
 
-
 def daterange(start_date, end_date):
     for n in range((end_date - start_date).days + 1):
         yield start_date + datetime.timedelta(n)
-
 
 def get_working_days(start_date, end_date, country='FR'):
     fr_holidays = holidays.country_holidays(country)
@@ -27,28 +25,33 @@ def get_working_days(start_date, end_date, country='FR'):
                 working_days.append(day)
     return working_days, holiday_days
 
+def _people_names(people_cfg):
+    return list(people_cfg.keys()) if isinstance(people_cfg, dict) else list(people_cfg)
 
-def is_available(person_cfg, date):
-    weekday = date.weekday()
+
+def _is_available(person_name, day, people_cfg):
+    """Check if a person is available on a given date."""
+    cfg = people_cfg.get(person_name, {}) if isinstance(people_cfg, dict) else {}
+
+    if isinstance(day, int):
+        return True
+
+    weekday = day.weekday()
+    day_str = day.strftime("%Y-%m-%d")
+
     return (
-        str(date) not in person_cfg.get('holidays', []) and
-        weekday in person_cfg.get('available_weekdays', list(range(5)))
+            day_str not in cfg.get('holidays', []) and
+            weekday in cfg.get('available_weekdays', list(range(5)))
     )
 
-def choose_person_balanced(people_cfg, date, assigned_days, target_days):
-    available = [p for p, cfg in people_cfg.items()
-                 if is_available(cfg, date) and assigned_days[p] < target_days[p]]
-    if not available:
-        return None
-    available.sort(key=lambda p: assigned_days[p])
-    return available[0]
 
 def allocate_days(config, working_days):
-
     total_slots = len(working_days) * 2
     schedule = defaultdict(list)
+    if total_slots <= 0:
+        return schedule
 
-    # 1) Quotas finaux par Largest Remainder (sur nb_radiologists)
+    # Quotas via Largest Remainder
     weights = {k: max(0, int(v.get('nb_radiologists', 0))) for k, v in config.items()}
     total_w = sum(weights.values())
     if total_w == 0:
@@ -56,95 +59,101 @@ def allocate_days(config, working_days):
 
     raw = {k: weights[k] / total_w * total_slots for k in config}
     base = {k: floor(raw[k]) for k in config}
-    assigned = sum(base.values())
-    remainder = total_slots - assigned
-    for k, _ in sorted(((k, raw[k] - base[k]) for k in config),
-                       key=lambda x: (-x[1], x[0])):
-        if remainder <= 0:
-            break
-        base[k] += 1
+    remainder = total_slots - sum(base.values())
+    for k, _ in sorted(((k, raw[k] - base[k]) for k in config), key=lambda x: (-x[1], x[0])):
+        if remainder <= 0: break
+        base[k] += 1;
         remainder -= 1
     quotas = base
 
-    # 2) SWRR pour générer une séquence de sites (longueur = total_slots)
-    eff_weights = quotas.copy()
-    total_eff_w = sum(eff_weights.values())
+    # Génère une séquence lissée de sites (SWRR) de longueur = total_slots
+    eff_w = quotas.copy()
+    total_eff_w = sum(eff_w.values())
     current = {k: 0 for k in config}
     remaining = quotas.copy()
-
     seq = []
     while len(seq) < total_slots:
-        # incrémente les scores pour ceux qui restent
         for k in remaining:
             if remaining[k] > 0:
-                current[k] += eff_weights.get(k, 0)
-        # choisit le meilleur
-        candidates = [k for k in remaining if remaining[k] > 0]
-        if not candidates:
-            break
-        best = max(candidates, key=lambda k: (current[k], k))  # stable
+                current[k] += eff_w.get(k, 0)
+        cands = [k for k in remaining if remaining[k] > 0]
+        if not cands: break
+        best = max(cands, key=lambda k: (current[k], k))
         current[best] -= total_eff_w
         remaining[best] -= 1
         seq.append(best)
 
-    # 3) Prépare l’équilibrage par personne (advanced_split)
-    advanced_assignments = {}
-    target_days_by_person = {}
-    for place, cfg in config.items():
-        if cfg.get("advanced_split"):
-            people = cfg.get('people', {})
-            total = quotas.get(place, 0)
-            if total > 0 and people:
-                base_p = total // len(people)
-                extra = total % len(people)
-                target_days_by_person[place] = {
-                    p: base_p + (1 if i < extra else 0)
-                    for i, p in enumerate(people)
-                }
-                advanced_assignments[place] = defaultdict(int)
+    # Compteurs pour l'équilibrage des médecins
+    counts = defaultdict(lambda: defaultdict(int))  # counts[place][person]
+    last_used = defaultdict(lambda: defaultdict(lambda: -10 ** 9))  # last_used[place][person]
 
-    def format_slot(place_key, day):
+    def pick_person(place_key, day_obj, day_idx, exclude=None):
+        cfg = config[place_key]
+        people_cfg = cfg.get('people', {})
+        names = _people_names(people_cfg)
+        if not names:
+            return None
+
+        excl = set(exclude or [])
+        candidates = [p for p in names if p not in excl and _is_available(p, day_obj, people_cfg)]
+        if not candidates:
+            # si tout le monde est exclu/indispo, on retire l'exclusion
+            candidates = [p for p in names if _is_available(p, day_obj, people_cfg)]
+            if not candidates:
+                candidates = names  # dernier recours: tout le monde
+
+        # Tri par (nb affectations croissant, ancienneté, nom)
+        candidates.sort(key=lambda p: (counts[place_key][p], last_used[place_key][p], p))
+        chosen = candidates[0]
+        counts[place_key][chosen] += 1
+        last_used[place_key][chosen] = day_idx
+        return chosen
+
+    def format_site_plus_person(place_key, day_obj, day_idx, exclude_person=None):
         cfg = config[place_key]
         if cfg.get("advanced_split"):
-            person = choose_person_balanced(
-                cfg['people'], day,
-                advanced_assignments.get(place_key, defaultdict(int)),
-                target_days_by_person.get(place_key, {})
-            )
+            person = pick_person(place_key, day_obj, day_idx, exclude=exclude_person)
             if person:
-                advanced_assignments[place_key][person] += 1
                 return f"{cfg['name']} - {person}"
-            else:
-                return f"{cfg['name']} - ??"
+            return f"{cfg['name']} - ??"
         return cfg['name']
 
-    # 4) Compose les jours (2 créneaux/jour), en forçant pair_same_day si possible
+    # Compose les jours (2 créneaux/jour) avec pair_same_day strict
     idx = 0
-    for day in working_days:
-        if idx >= len(seq):
-            break
+    for day_idx, day in enumerate(working_days):
+        if idx >= len(seq): break
+        first_site = seq[idx];
+        idx += 1
 
-        first = seq[idx]; idx += 1
-        second = None
-
-        if config[first].get("pair_same_day", False):
-            # Cherche la prochaine occurrence de `first` et l'avance pour la paire
+        # Tenter d'avoir le même site si pair_same_day
+        if config[first_site].get("pair_same_day", False):
             j = idx
-            while j < len(seq) and seq[j] != first:
+            while j < len(seq) and seq[j] != first_site:
                 j += 1
             if j < len(seq):
-                # Avance cette occurrence à la position 'idx'
                 seq.pop(j)
-                second = first
-            # sinon: pas d'autre slot pour ce site -> on prendra le next normal
+                second_site = first_site
+            else:
+                second_site = seq[idx] if idx < len(seq) else None
+                if second_site is not None: idx += 1
+        else:
+            second_site = seq[idx] if idx < len(seq) else None
+            if second_site is not None: idx += 1
 
-        if second is None:
-            if idx < len(seq):
-                second = seq[idx]; idx += 1
-
-        schedule[day].append(format_slot(first, day))
-        if second is not None:
-            schedule[day].append(format_slot(second, day))
+        # Affectations (évite le même médecin 2x si possible)
+        if second_site == first_site and config[first_site].get("advanced_split"):
+            names = _people_names(config[first_site].get('people', {}))
+            s1 = format_site_plus_person(first_site, day, day_idx, exclude_person=None)
+            chosen1 = s1.split(" - ", 1)[1] if " - " in s1 else None
+            excl = set() if len(names) == 1 else ({chosen1} if chosen1 else set())
+            s2 = format_site_plus_person(first_site, day, day_idx, exclude_person=excl)
+            schedule[day].extend([s1, s2])
+        else:
+            s1 = format_site_plus_person(first_site, day, day_idx, exclude_person=None)
+            schedule[day].append(s1)
+            if second_site:
+                s2 = format_site_plus_person(second_site, day, day_idx, exclude_person=None)
+                schedule[day].append(s2)
 
     return schedule
 
