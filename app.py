@@ -1,17 +1,41 @@
 import streamlit as st
-import datetime
+from dateutil.relativedelta import relativedelta as rd
 
-from utils.create_calendar import create_calendar_editor, create_visual_calendar
+from utils.create_calendar import create_calendar_editor, create_visual_calendar, get_start_and_end_date, \
+    create_date_dropdown_list
 from utils.tools import (
     load_config, get_working_days, allocate_days,
     schedule_to_dataframe, daterange
 )
 
+# Init session_state
+for k, v in {
+    "df_schedule": None,
+    "df_schedule_simple": None,
+    "generated_for": None,
+}.items():
+    st.session_state.setdefault(k, v)
+
+def reset_planning():
+    st.session_state.df_schedule = None
+    st.session_state.df_schedule_simple = None
+    st.session_state.generated_for = None
+
 st.title("Planning radiologues")
 
 col1, col2 = st.columns(2)
-start_date = col1.date_input("Date de début", datetime.date.today())
-end_date = col2.date_input("Date de fin", datetime.date.today() + datetime.timedelta(days=30))
+start_dt, end_dt = get_start_and_end_date()
+date_options = create_date_dropdown_list(start_dt)
+
+selected_date = st.selectbox(
+    "Choix du trimestre",
+    options=date_options,
+    format_func=lambda d: d.strftime("%d-%m-%Y"),
+    key="selected_date",
+    on_change=reset_planning
+)
+
+end_date = selected_date + rd(months=3) - rd(days=1)
 
 config = load_config('config/config.yml')
 
@@ -47,10 +71,10 @@ for key in ["df_schedule", "df_schedule_simple"]:
         st.session_state[key] = None
 
 if st.button("Générer le planning"):
-    if start_date > end_date:
+    if selected_date > end_date:
         st.error("La date de début doit être avant la date de fin.")
     else:
-        working_days, public_holidays = get_working_days(start_date, end_date)
+        working_days, public_holidays = get_working_days(selected_date, end_date)
 
         schedule_full = allocate_days(config, working_days, full=True)
         schedule_simple = allocate_days(config, working_days, full=False)
@@ -58,13 +82,21 @@ if st.button("Générer le planning"):
         st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
         st.session_state.df_schedule_simple = schedule_to_dataframe(schedule_simple)
 
+        st.session_state.generated_for = st.session_state.selected_date
+
         st.success(f"Planning généré pour {len(working_days)} jours ouvrés.")
         if public_holidays:
             st.info(f"{len(public_holidays)} jour(s) férié(s) ignoré(s) : " + ", ".join(
                 [f"{d.strftime('%d/%m')} ({n})" for d, n in public_holidays]
             ))
 
-if st.session_state.df_schedule is not None:
+# On n’affiche les plannings que si la date actuelle == celle pour laquelle on a généré le planning.
+show_tables = (
+    st.session_state.generated_for is not None
+    and st.session_state.generated_for == st.session_state.selected_date
+)
+
+if show_tables and st.session_state.df_schedule is not None:
     create_calendar_editor(
         source=st.session_state.df_schedule,
         title="Planning détaillé (lieu + médecin si applicable)",
@@ -77,7 +109,7 @@ if st.session_state.df_schedule is not None:
     )
 
 
-if st.session_state.df_schedule_simple is not None:
+if show_tables and st.session_state.df_schedule_simple is not None:
     create_calendar_editor(
         source=st.session_state.df_schedule_simple,
         title="Planning simplifié (par lieu uniquement)",
