@@ -1,5 +1,4 @@
 import streamlit as st
-import calendar
 from utils.export_agenda import to_excel
 from dateutil.relativedelta import relativedelta as rd
 import pandas as pd
@@ -72,7 +71,7 @@ def get_start_and_end_date():
 
     return start_date, end_date
 
-def create_date_dropdown_list(start_date, num_quarters=5):
+def create_date_dropdown_list(start_date, num_quarters=3):
     """
     Generates a list of dates, representing the start of subsequent quarters.
 
