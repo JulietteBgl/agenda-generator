@@ -3,8 +3,9 @@ from dateutil.relativedelta import relativedelta as rd
 
 from utils.create_calendar import create_calendar_editor, create_visual_calendar, get_start_and_end_date, \
     create_date_dropdown_list
+from utils.day_allocation import allocate_days
 from utils.tools import (
-    load_config, get_working_days, allocate_days,
+    load_config, get_working_days,
     schedule_to_dataframe, daterange
 )
 
@@ -16,10 +17,12 @@ for k, v in {
 }.items():
     st.session_state.setdefault(k, v)
 
+
 def reset_planning():
     st.session_state.df_schedule = None
     st.session_state.df_schedule_simple = None
     st.session_state.generated_for = None
+
 
 st.title("Planning radiologues")
 
@@ -45,26 +48,28 @@ with st.expander("Ajouter des congés (plages ou dates)", expanded=False):
     # Réinitialise les congés à vide par défaut
     for place_cfg in config.values():
         if place_cfg.get("advanced_split"):
-            for person_cfg in place_cfg['people'].values():
-                person_cfg['holidays'] = []
+            place_cfg['holidays'] = []
+
     for place_key, place_cfg in config.items():
         if place_cfg.get("advanced_split"):
             st.markdown(f"**{place_cfg['name']}**")
-            for person, person_cfg in place_cfg['people'].items():
-                col1, col2 = st.columns(2)
-                with col1:
-                    start_vac = st.date_input(f"Début congé - {person}", value=None, key=f"start_{place_key}_{person}")
-                with col2:
-                    end_vac = st.date_input(f"Fin congé - {person}", value=None, key=f"end_{place_key}_{person}")
-                if start_vac and end_vac:
-                    days = [str(d) for d in daterange(start_vac, end_vac)]
-                    person_cfg.setdefault('holidays', []).extend(days)
-                manual_days = st.text_input(
-                    f"Autres jours (AAAA-MM-JJ séparés par ,) pour {person}",
-                    value=", ".join(person_cfg.get("holidays", [])),
-                    key=f"manual_days_{place_key}_{person}"
-                )
-                person_cfg['holidays'] = list(set([d.strip() for d in manual_days.split(",") if d.strip()]))
+
+            col1, col2 = st.columns(2)
+            with col1:
+                start_vac = st.date_input(f"Début congé", value=None, key=f"start_{place_key}")
+            with col2:
+                end_vac = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}")
+
+            if start_vac and end_vac:
+                days = [str(d) for d in daterange(start_vac, end_vac)]
+                place_cfg.setdefault('holidays', []).extend(days)
+
+            manual_days = st.text_input(
+                f"Autres jours (AAAA-MM-JJ séparés par ,)",
+                value=", ".join(place_cfg.get("holidays", [])),
+                key=f"manual_days_{place_key}"
+            )
+            place_cfg['holidays'] = list(set([d.strip() for d in manual_days.split(",") if d.strip()]))
 
 for key in ["df_schedule", "df_schedule_simple"]:
     if key not in st.session_state:
@@ -95,10 +100,10 @@ if st.button("Générer le planning"):
                 [f"{d.strftime('%d/%m')} ({n})" for d, n in public_holidays]
             ))
 
-# On n’affiche les plannings que si la date actuelle == celle pour laquelle on a généré le planning.
+# On n'affiche les plannings que si la date actuelle == celle pour laquelle on a généré le planning.
 show_tables = (
-    st.session_state.generated_for is not None
-    and st.session_state.generated_for == st.session_state.selected_date
+        st.session_state.generated_for is not None
+        and st.session_state.generated_for == st.session_state.selected_date
 )
 
 if show_tables and st.session_state.df_schedule is not None:
@@ -112,7 +117,6 @@ if show_tables and st.session_state.df_schedule is not None:
         source=st.session_state.df_schedule,
         title="Vue hebdomadaire visuelle"
     )
-
 
 if show_tables and st.session_state.df_schedule_simple is not None:
     create_calendar_editor(
