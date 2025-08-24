@@ -6,7 +6,7 @@ from utils.create_calendar import create_calendar_editor, create_visual_calendar
 from utils.day_allocation import allocate_days
 from utils.tools import (
     load_config, get_working_days,
-    schedule_to_dataframe, daterange
+    schedule_to_dataframe, daterange, schedule_summary
 )
 
 # Init session_state
@@ -129,3 +129,7 @@ if show_tables and st.session_state.df_schedule_simple is not None:
         source=st.session_state.df_schedule_simple,
         title="Vue hebdomadaire visuelle"
     )
+
+    st.markdown("### Total")
+    df = schedule_summary(st.session_state.df_schedule_simple)
+    st.dataframe(df)
