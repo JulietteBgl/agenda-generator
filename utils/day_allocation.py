@@ -3,22 +3,22 @@ from math import floor
 
 
 def allocate_days(config, working_days):
+    list_paired_sites = [site for site in config if config[site]['pair_same_day']]
     total_slots = len(working_days) * 2
+    print('Total slots to allocate:', total_slots)
     schedule = defaultdict(list)
     if total_slots <= 0:
         return schedule
 
-    # Fonction pour vérifier si un site est disponible un jour donné
     def site_is_available(place_key, day_obj):
+        # check if a site is available on a soecific day
         cfg = config[place_key]
-        if not cfg.get("advanced_split"):
-            return True  # Sites simples toujours disponibles
 
-        # Pour les sites advanced_split, vérifier les jours de disponibilité
+        if not cfg.get("advanced_split"):
+            return True
+
         weekday = day_obj.weekday()
         available_weekdays = cfg.get('available_weekdays', list(range(5)))
-
-        # Vérifier les congés (holidays)
         day_str = day_obj.strftime("%Y-%m-%d")
         holidays = cfg.get('holidays', [])
 
@@ -33,19 +33,40 @@ def allocate_days(config, working_days):
     raw = {k: weights[k] / total_w * total_slots for k in config}
     base = {k: floor(raw[k]) for k in config}
     remainder = total_slots - sum(base.values())
-    for k, _ in sorted(((k, raw[k] - base[k]) for k in config), key=lambda x: (-x[1], x[0])):
-        if remainder <= 0: break
-        base[k] += 1;
-        remainder -= 1
-    quotas = base
 
-    # Génère une séquence lissée de sites (SWRR) de longueur = total_slots
+    for k, _ in sorted(((k, raw[k] - base[k]) for k in config), key=lambda x: (-x[1], x[0])):
+        if remainder <= 0:
+            break
+        base[k] += 1
+        remainder -= 1
+
+    # Adjust quotas for pair_same_day sites - they should have an even number of slots
+    quotas = base.copy()
+    for site in list_paired_sites:
+        if quotas[site] % 2 == 1:  # Si impair
+            quotas[site] += 1  # Rendre pair
+
+    # Distribute lost slots to un-even sites
+    lost_slots = sum(quotas.values()) - total_slots
+    non_pair_sites = [k for k in config if not config[k].get("pair_same_day", False)]
+    i = 0
+    while lost_slots > 0 and non_pair_sites:
+        if quotas[non_pair_sites[i % len(non_pair_sites)]] > 1:
+            quotas[non_pair_sites[i % len(non_pair_sites)]] -= 1
+            lost_slots -= 1
+        i += 1
+        if i > len(non_pair_sites) * 10:
+            break
+
+    print("quotas", quotas)
+
+    # Use SWRR to create a sequence
     eff_w = quotas.copy()
     total_eff_w = sum(eff_w.values())
     current = {k: 0 for k in config}
     remaining = quotas.copy()
     seq = []
-    while len(seq) < total_slots:
+    while len(seq) < sum(quotas.values()):
         for k in remaining:
             if remaining[k] > 0:
                 current[k] += eff_w.get(k, 0)
@@ -56,38 +77,51 @@ def allocate_days(config, working_days):
         remaining[best] -= 1
         seq.append(best)
 
-    # Compose les jours (2 créneaux/jour) avec pair_same_day strict
-    idx = 0
-    for day_idx, day in enumerate(working_days):
-        if idx >= len(seq): break
+    # Create days distribution
+    for day in working_days:
+        if len(seq) == 0:
+            print(f"No more slots available for day {day}")
+            break
 
-        # Vérifier que le premier site est disponible
-        while idx < len(seq) and not site_is_available(seq[idx], day):
-            idx += 1
+        first_site = None
+        idx_first = None
+        for i, site in enumerate(seq):
+            if site_is_available(site, day):
+                first_site = site
+                idx_first = i
+                break
 
-        if idx >= len(seq): break
+        if first_site is None:
+            continue
 
-        first_site = seq[idx]
-        idx += 1
+        # Remove first site from sequence
+        seq.pop(idx_first)
 
-        # Tenter d'avoir le même site si pair_same_day
+        # Manage second site
+        second_site = None
         if config[first_site].get("pair_same_day", False):
-            # Pour pair_same_day, on force le second site à être identique
-            second_site = first_site
-            # Mais on consomme quand même le prochain slot dans la séquence pour maintenir l'équilibre
-            if idx < len(seq):
-                idx += 1
+            for i, site in enumerate(seq):
+                if site == first_site:
+                    second_site = site
+                    seq.pop(i)
+                    break
+
+            if second_site is None:
+                print(f"Warning: no more occurence of {first_site} found")
+                second_site = first_site  # Fallback
         else:
-            second_site = seq[idx] if idx < len(seq) else None
-            if second_site is not None:
-                # Vérifier que le second site est disponible
-                while idx < len(seq) and not site_is_available(seq[idx], day):
-                    idx += 1
-                if idx < len(seq):
-                    second_site = seq[idx]
-                    idx += 1
-                else:
-                    second_site = None
+            # Pour les autres sites, chercher un site différent disponible
+            idx_second = None
+            for i, site in enumerate(seq):
+                if (site != first_site and
+                        site not in list_paired_sites and
+                        site_is_available(site, day)):
+                    second_site = site
+                    idx_second = i
+                    break
+
+            if idx_second is not None:
+                seq.pop(idx_second)
 
         # Affectations
         assignments = []
