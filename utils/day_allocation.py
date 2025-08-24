@@ -11,7 +11,7 @@ def allocate_days(config, working_days):
         return schedule
 
     def site_is_available(place_key, day_obj):
-        # check if a site is available on a soecific day
+        # check if a site is available on a specific day
         cfg = config[place_key]
 
         if not cfg.get("advanced_split"):
