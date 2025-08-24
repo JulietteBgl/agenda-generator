@@ -1,3 +1,4 @@
+import random
 from collections import defaultdict
 from math import floor
 
@@ -58,7 +59,9 @@ def allocate_days(config, working_days):
         if i > len(non_pair_sites) * 10:
             break
 
-    print("quotas", quotas)
+    late_sites = [site for site in quotas if not quotas[site] % 10 == 0 and site[:4].lower() != "majo"]
+    if not late_sites:
+        late_sites = ['']
 
     # Use SWRR to create a sequence
     eff_w = quotas.copy()
@@ -110,10 +113,9 @@ def allocate_days(config, working_days):
                 print(f"Warning: no more occurence of {first_site} found")
                 second_site = first_site  # Fallback
         else:
-            # Pour les autres sites, chercher un site différent disponible
             idx_second = None
             for i, site in enumerate(seq):
-                if (site != first_site and
+                if (site[:9] != first_site[:9] and
                         site not in list_paired_sites and
                         site_is_available(site, day)):
                     second_site = site
@@ -122,6 +124,8 @@ def allocate_days(config, working_days):
 
             if idx_second is not None:
                 seq.pop(idx_second)
+            else:
+                second_site = random.choice(late_sites)
 
         # Affectations
         assignments = []
