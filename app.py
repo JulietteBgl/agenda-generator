@@ -106,30 +106,40 @@ show_tables = (
         and st.session_state.generated_for == st.session_state.selected_date
 )
 
-if show_tables and st.session_state.df_schedule is not None:
-    create_calendar_editor(
-        source=st.session_state.df_schedule,
-        title="Planning détaillé (lieu + médecin si applicable)",
-        excel_name="planning_detaille"
-    )
+if show_tables and st.session_state.df_schedule is not None and st.session_state.df_schedule_simple is not None:
 
-    create_visual_calendar(
-        source=st.session_state.df_schedule,
-        title="Vue hebdomadaire visuelle"
-    )
+    st.markdown("## Vue complète : lieu + médecin si applicable")
+    tab1_complete, tab2_complete = st.tabs(["📊 Tableau", "📅 Vue visuelle"])
 
-if show_tables and st.session_state.df_schedule_simple is not None:
-    create_calendar_editor(
-        source=st.session_state.df_schedule_simple,
-        title="Planning simplifié (par lieu uniquement)",
-        excel_name="planning_simple"
-    )
+    with tab1_complete:
+        create_calendar_editor(
+            source=st.session_state.df_schedule,
+            excel_name="planning_detaille"
+        )
 
-    create_visual_calendar(
-        source=st.session_state.df_schedule_simple,
-        title="Vue hebdomadaire visuelle"
-    )
+    with tab2_complete:
+        create_visual_calendar(
+            source=st.session_state.df_schedule,
+        )
 
-    st.markdown("### Total")
-    df = schedule_summary(st.session_state.df_schedule_simple)
-    st.dataframe(df)
+    st.markdown("## Vue simplifiée : lieu uniquement")
+    tab1_simple, tab2_simple = st.tabs(["📊 Tableau", "📅 Vue visuelle"])
+
+    with tab1_simple:
+        create_calendar_editor(
+            source=st.session_state.df_schedule_simple,
+            excel_name="planning_simple"
+        )
+
+        st.markdown("### Total")
+        df = schedule_summary(st.session_state.df_schedule_simple)
+        st.dataframe(df)
+
+    with tab2_simple:
+        create_visual_calendar(
+            source=st.session_state.df_schedule_simple,
+        )
+
+        st.markdown("### Total")
+        df = schedule_summary(st.session_state.df_schedule_simple)
+        st.dataframe(df)
