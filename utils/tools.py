@@ -2,6 +2,7 @@ import yaml
 import datetime
 import pandas as pd
 import holidays
+from collections import Counter
 
 def load_config(yaml_path):
     with open(yaml_path, 'r', encoding='utf-8') as file:
@@ -34,3 +35,9 @@ def schedule_to_dataframe(schedule):
             "Affectation 2": assignments[1] if len(assignments) > 1 else ""
         })
     return pd.DataFrame(rows)
+
+
+def schedule_summary(schedule):
+    affectations = list(schedule["Affectation 1"]) + list(schedule["Affectation 2"])
+    count = Counter(affectations)
+    return pd.DataFrame(list(count.items()), columns=['site', 'count'])
