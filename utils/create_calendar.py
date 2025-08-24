@@ -92,8 +92,7 @@ def create_date_dropdown_list(start_date, num_quarters=3):
         date_dropdown_list.append(current_date)
     return date_dropdown_list
 
-def create_calendar_editor(source, title, excel_name):
-    st.subheader(title)
+def create_calendar_editor(source, excel_name):
     edited_df = st.data_editor(
         source,
         column_config={"Date": st.column_config.TextColumn(disabled=True)},
@@ -104,8 +103,7 @@ def create_calendar_editor(source, title, excel_name):
     st.download_button("Télécharger Excel", data=to_excel(edited_df), file_name=f"{excel_name}.xlsx")
     return
 
-def create_visual_calendar(source, title):
-    st.subheader(title)
+def create_visual_calendar(source):
     calendar = format_schedule_for_visual(source)
     day_labels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
 
