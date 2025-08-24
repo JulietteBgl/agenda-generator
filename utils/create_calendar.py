@@ -4,6 +4,16 @@ from dateutil.relativedelta import relativedelta as rd
 import pandas as pd
 from datetime import datetime
 
+
+def continuous_week(date_obj):
+    iso_year, iso_week, iso_weekday = date_obj.isocalendar()
+
+    if date_obj.month == 12 and iso_week == 1:
+        return 53
+
+    return iso_week
+
+
 def format_schedule_for_visual(schedule):
     schedule["Date"] = pd.to_datetime(schedule["Date"])
     schedule = schedule[schedule["Date"].dt.weekday < 5]
@@ -28,7 +38,8 @@ def format_schedule_for_visual(schedule):
             "aff2": row.get("Affectation 2", "")
         }
 
-        result.setdefault((month_key, month_label), {}).setdefault(date.isocalendar().week, {})[day_fr] = display
+        week_num = continuous_week(date.date())
+        result.setdefault((month_key, month_label), {}).setdefault(week_num, {})[day_fr] = display
 
     return result
 
