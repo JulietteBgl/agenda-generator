@@ -106,7 +106,7 @@ def create_date_dropdown_list(start_date, num_quarters=3):
 def create_calendar_editor(source, excel_name):
     edited_df = st.data_editor(
         source,
-        column_config={"Date": st.column_config.TextColumn(disabled=True)},
+        column_config={"Date": st.column_config.DateColumn(disabled=True)},
         use_container_width=True,
         num_rows="dynamic",
         key=excel_name
