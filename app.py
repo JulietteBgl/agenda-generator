@@ -56,13 +56,18 @@ with st.expander("Ajouter des congés (plages ou dates)", expanded=False):
 
             col1, col2 = st.columns(2)
             with col1:
-                start_vac = st.date_input(f"Début congé", value=None, key=f"start_{place_key}")
+                start_vac1 = st.date_input(f"Début congé", value=None, key=f"start_{place_key}_1")
+                start_vac2 = st.date_input(f"Début congé", value=None, key=f"start_{place_key}_2")
+                start_vac3 = st.date_input(f"Début congé", value=None, key=f"start_{place_key}_3")
             with col2:
-                end_vac = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}")
+                end_vac1 = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}_1")
+                end_vac2 = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}_2")
+                end_vac3 = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}_3")
 
-            if start_vac and end_vac:
-                days = [str(d) for d in daterange(start_vac, end_vac)]
-                place_cfg.setdefault('holidays', []).extend(days)
+            for start_vac, end_vac in zip([start_vac1, start_vac2, start_vac2], [end_vac1, end_vac2, end_vac2]):
+                if start_vac and end_vac:
+                    days = [str(d) for d in daterange(start_vac, end_vac)]
+                    place_cfg.setdefault('holidays', []).extend(days)
 
             manual_days = st.text_input(
                 f"Autres jours (AAAA-MM-JJ séparés par ,)",
