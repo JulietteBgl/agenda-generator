@@ -64,7 +64,7 @@ with st.expander("Ajouter des congés (plages ou dates)", expanded=False):
                 end_vac2 = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}_2")
                 end_vac3 = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}_3")
 
-            for start_vac, end_vac in zip([start_vac1, start_vac2, start_vac2], [end_vac1, end_vac2, end_vac2]):
+            for start_vac, end_vac in zip([start_vac1, start_vac2, start_vac2], [end_vac1, end_vac2, end_vac3]):
                 if start_vac and end_vac:
                     days = [str(d) for d in daterange(start_vac, end_vac)]
                     place_cfg.setdefault('holidays', []).extend(days)
@@ -87,15 +87,8 @@ if st.button("Générer le planning"):
         working_days, public_holidays = get_working_days(selected_date, end_date)
 
         schedule_full = allocate_days(config, working_days)
-        schedule_simple = schedule_full.copy()
-        for day, assignments in schedule_simple.items():
-            schedule_simple[day] = [
-                "Majo" if "majo" in val.lower() else val
-                for val in assignments
-            ]
 
         st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
-        st.session_state.df_schedule_simple = schedule_to_dataframe(schedule_simple)
 
         st.session_state.generated_for = st.session_state.selected_date
 
@@ -111,16 +104,17 @@ show_tables = (
         and st.session_state.generated_for == st.session_state.selected_date
 )
 
-if show_tables and st.session_state.df_schedule is not None and st.session_state.df_schedule_simple is not None:
+if show_tables and st.session_state.df_schedule is not None:
 
     st.markdown("## Vue complète : lieu + médecin si applicable")
     tab1_complete, tab2_complete = st.tabs(["📊 Tableau", "📅 Vue visuelle"])
 
     with tab1_complete:
-        create_calendar_editor(
+        edited_full = create_calendar_editor( # est-ce que je peux supprimer edited_full? pas utilisé
             source=st.session_state.df_schedule,
-            excel_name="planning_detaille"
+            excel_name="planning_detaille",
         )
+        st.session_state.df_schedule = edited_full
 
     with tab2_complete:
         create_visual_calendar(
@@ -132,19 +126,21 @@ if show_tables and st.session_state.df_schedule is not None and st.session_state
 
     with tab1_simple:
         create_calendar_editor(
-            source=st.session_state.df_schedule_simple,
-            excel_name="planning_simple"
+            source=st.session_state.df_schedule,
+            excel_name="planning_simple",
+            simplified=True
         )
 
         st.markdown("### Total")
-        df = schedule_summary(st.session_state.df_schedule_simple)
+        df = schedule_summary(st.session_state.df_schedule)
         st.dataframe(df)
 
     with tab2_simple:
         create_visual_calendar(
-            source=st.session_state.df_schedule_simple,
+            source=st.session_state.df_schedule,
+            simplified=True
         )
 
         st.markdown("### Total")
-        df = schedule_summary(st.session_state.df_schedule_simple)
+        df = schedule_summary(st.session_state.df_schedule)
         st.dataframe(df)

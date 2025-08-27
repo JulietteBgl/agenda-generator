@@ -103,31 +103,73 @@ def create_date_dropdown_list(start_date, num_quarters=3):
         date_dropdown_list.append(current_date)
     return date_dropdown_list
 
-def create_calendar_editor(source, excel_name):
-    edited_df = st.data_editor(
-        source,
-        column_config={"Date": st.column_config.DateColumn(disabled=True)},
+
+def dynamic_input_data_editor(data, key, **_kwargs):
+    """
+    Like streamlit's data_editor but which allows you to initialize the data editor with input arguments that can
+    change between consecutive runs. Fixes the problem described here: https://discuss.streamlit.io/t/data-editor-not-changing-cell-the-1st-time-but-only-after-the-second-time/64894/13?u=ranyahalom
+    :param data: The `data` argument you normally pass to `st.data_editor()`.
+    :param key: The `key` argument you normally pass to `st.data_editor()`.
+    :param _kwargs: All other named arguments you normally pass to `st.data_editor()`.
+    :return: Same result returned by calling `st.data_editor()`
+    """
+    changed_key = f'{key}_khkhkkhkkhkhkihsdhsaskskhhfgiolwmxkahs'
+    initial_data_key = f'{key}_khkhkkhkkhkhkihsdhsaskskhhfgiolwmxkahs__initial_data'
+
+    def on_data_editor_changed():
+        if 'on_change' in _kwargs:
+            args = _kwargs['args'] if 'args' in _kwargs else ()
+            kwargs = _kwargs['kwargs'] if 'kwargs' in _kwargs else  {}
+            _kwargs['on_change'](*args, **kwargs)
+        st.session_state[changed_key] = True
+
+    if changed_key in st.session_state and st.session_state[changed_key]:
+        data = st.session_state[initial_data_key]
+        st.session_state[changed_key] = False
+    else:
+        st.session_state[initial_data_key] = data
+    __kwargs = _kwargs.copy()
+    __kwargs.update({'data': data, 'key': key, 'on_change': on_data_editor_changed})
+    return st.data_editor(**__kwargs)
+
+
+def create_calendar_editor(source, excel_name, simplified=False):
+    df = source.copy(deep=True)
+    if simplified:
+        df["Affectation 1"] = df["Affectation 1"].str.replace(r"^majo.*", "Majo", case=False, regex=True)
+        df["Affectation 2"] = df["Affectation 2"].str.replace(r"^majo.*", "Majo", case=False, regex=True)
+        column_config = {"Date": st.column_config.DateColumn(disabled=True),
+                         "Affectation 1": st.column_config.TextColumn(disabled=True),
+                         "Affectation 2": st.column_config.TextColumn(disabled=True)}
+    else:
+        column_config = {"Date": st.column_config.DateColumn(disabled=True)}
+    edited_df = dynamic_input_data_editor(
+        df,
+        column_config=column_config,
         use_container_width=True,
         num_rows="dynamic",
-        key=excel_name
+        key=f"editor_{excel_name}",
     )
     st.download_button("Télécharger Excel", data=to_excel(edited_df), file_name=f"{excel_name}.xlsx")
-    return
+    return edited_df
 
-def create_visual_calendar(source):
-    calendar = format_schedule_for_visual(source)
+
+def create_visual_calendar(source, simplified=False):
+    df = source.copy(deep=True)
+    if simplified:
+        df["Affectation 1"] = df["Affectation 1"].str.replace(r"^majo.*", "Majo", case=False, regex=True)
+        df["Affectation 2"] = df["Affectation 2"].str.replace(r"^majo.*", "Majo", case=False, regex=True)
+    calendar = format_schedule_for_visual(df)
     day_labels = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
 
     for (_, month_label), weeks in sorted(calendar.items()):
         st.markdown(f"### 📅 {month_label.capitalize()}")
 
-        # En-tête des jours
         header_cols = st.columns(5)
         for i, day in enumerate(day_labels):
             with header_cols[i]:
                 st.markdown(f"**{day}**")
 
-        # Semaine par semaine
         for _, days in sorted(weeks.items()):
 
             cols = st.columns(5)
