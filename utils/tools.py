@@ -4,6 +4,7 @@ import pandas as pd
 import holidays
 from collections import Counter
 
+
 def load_config(yaml_path):
     with open(yaml_path, 'r', encoding='utf-8') as file:
         return yaml.safe_load(file)

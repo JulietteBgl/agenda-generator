@@ -82,6 +82,7 @@ def get_start_and_end_date():
 
     return start_date, end_date
 
+
 def create_date_dropdown_list(start_date, num_quarters=3):
     """
     Generates a list of dates, representing the start of subsequent quarters.
