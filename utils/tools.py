@@ -40,7 +40,7 @@ def schedule_to_dataframe(schedule):
 
 def schedule_summary(schedule):
     affectations = list(schedule["Affectation 1"]) + list(schedule["Affectation 2"])
-    affectations = ['Majo' if aff[:4] == 'Majo' else aff for aff in affectations]
+    affectations = ['Majo' if aff[:4].lower() == 'majo' else aff for aff in affectations]
     count = Counter(affectations)
     summary = pd.DataFrame(list(count.items()), columns=['Lieu', 'Nombre vacations'])
     return summary.sort_values(by='Nombre vacations', ascending=False)
