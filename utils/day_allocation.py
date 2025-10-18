@@ -94,46 +94,51 @@ def allocate_days(config, working_days):
                 idx_first = i
                 break
 
-        if first_site is None:
-            continue
+        if first_site is not None:
 
-        # Remove first site from sequence
-        seq.pop(idx_first)
+            # Remove first site from sequence
+            seq.pop(idx_first)
 
-        # Manage second site
-        second_site = None
-        if config[first_site].get("pair_same_day", False):
-            for i, site in enumerate(seq):
-                if site == first_site:
-                    second_site = site
-                    seq.pop(i)
-                    break
+            # Manage second site
+            second_site = None
+            if config[first_site].get("pair_same_day", False):
+                for i, site in enumerate(seq):
+                    if site == first_site:
+                        second_site = site
+                        seq.pop(i)
+                        break
 
-            if second_site is None:
-                print(f"Warning: no more occurence of {first_site} found")
-                second_site = first_site  # Fallback
-        else:
-            idx_second = None
-            for i, site in enumerate(seq):
-                if (site[:9] != first_site[:9] and
-                        site not in list_paired_sites and
-                        site_is_available(site, day)):
-                    second_site = site
-                    idx_second = i
-                    break
-
-            if idx_second is not None:
-                seq.pop(idx_second)
+                if second_site is None:
+                    print(f"Warning: no more occurence of {first_site} found")
+                    second_site = first_site  # Fallback
             else:
-                second_site = random.choice(late_sites)
+                idx_second = None
+                for i, site in enumerate(seq):
+                    if (site[:9] != first_site[:9] and
+                            site not in list_paired_sites and
+                            site_is_available(site, day)):
+                        second_site = site
+                        idx_second = i
+                        break
+
+                if idx_second is not None:
+                    seq.pop(idx_second)
+                else:
+                    second_site = random.choice(late_sites)
+
+        else:
+            first_site = second_site = None
 
         # Affectations
         assignments = []
         if first_site:
             assignments.append(config[first_site]['name'])
+        else:
+            assignments.append(None)
         if second_site:
             assignments.append(config[second_site]['name'])
-
+        else:
+            assignments.append(None)
         schedule[day] = assignments
 
     return schedule
