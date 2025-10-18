@@ -1,5 +1,6 @@
 import streamlit as st
 from dateutil.relativedelta import relativedelta as rd
+from datetime import date
 
 from utils.create_calendar import create_calendar_editor, create_visual_calendar, get_start_and_end_date, \
     create_date_dropdown_list
@@ -37,8 +38,9 @@ selected_date = st.selectbox(
     key="selected_date",
     on_change=reset_planning
 )
-
+selected_date = selected_date.date()
 end_date = selected_date + rd(months=3) - rd(days=1)
+default_start_date = max(selected_date, date.today())
 
 config = load_config('config/config.yml')
 
@@ -56,15 +58,15 @@ with st.expander("Ajouter des congés (plages ou dates)", expanded=False):
 
             col1, col2 = st.columns(2)
             with col1:
-                start_vac1 = st.date_input(f"Début congé", value=None, key=f"start_{place_key}_1")
-                start_vac2 = st.date_input(f"Début congé", value=None, key=f"start_{place_key}_2")
-                start_vac3 = st.date_input(f"Début congé", value=None, key=f"start_{place_key}_3")
+                start_vac1 = st.date_input(f"Début congé", value=None, min_value=default_start_date, max_value=end_date, key=f"start_{place_key}_1")
+                start_vac2 = st.date_input(f"Début congé", value=None, min_value=default_start_date, max_value=end_date, key=f"start_{place_key}_2")
+                start_vac3 = st.date_input(f"Début congé", value=None, min_value=default_start_date, max_value=end_date, key=f"start_{place_key}_3")
             with col2:
-                end_vac1 = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}_1")
-                end_vac2 = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}_2")
-                end_vac3 = st.date_input(f"Fin congé", value=None, key=f"end_{place_key}_3")
+                end_vac1 = st.date_input(f"Fin congé", value=None, min_value=start_vac1 if start_vac1 else default_start_date, max_value=end_date, key=f"end_{place_key}_1")
+                end_vac2 = st.date_input(f"Fin congé", value=None, min_value=start_vac2 if start_vac2 else default_start_date, max_value=end_date, key=f"end_{place_key}_2")
+                end_vac3 = st.date_input(f"Fin congé", value=None, min_value=start_vac2 if start_vac3 else default_start_date, max_value=end_date, key=f"end_{place_key}_3")
 
-            for start_vac, end_vac in zip([start_vac1, start_vac2, start_vac2], [end_vac1, end_vac2, end_vac3]):
+            for start_vac, end_vac in zip([start_vac1, start_vac2, start_vac3], [end_vac1, end_vac2, end_vac3]):
                 if start_vac and end_vac:
                     days = [str(d) for d in daterange(start_vac, end_vac)]
                     place_cfg.setdefault('holidays', []).extend(days)
