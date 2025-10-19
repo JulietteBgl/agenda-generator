@@ -2,21 +2,21 @@ majorelle_pb:
   name: 'Majo - PB'
   advanced_split: True
   nb_radiologists: 1
-  available_weekdays: [0, 3, 4]  # lundi, jeudi, vendredi
+  available_weekdays: [0, 3, 4]
   pair_same_day: False
 
 majorelle_cg:
   name: 'Majo - CG'
   advanced_split: True
   nb_radiologists: 1
-  available_weekdays: [2, 4]  # mercredi, vendredi
+  available_weekdays: [2, 4]
   pair_same_day: False
 
 majorelle_mb:
   name: 'Majo - MB'
   advanced_split: True
   nb_radiologists: 1
-  available_weekdays: [2, 4]  # mercredi, vendredi
+  available_weekdays: [2, 4]
   pair_same_day: False
 
 icl:

@@ -10,6 +10,12 @@ from utils.tools import (
     schedule_to_dataframe, daterange, schedule_summary
 )
 
+st.set_page_config(
+    page_title="Planning Radiologues",
+    page_icon="📅",
+    initial_sidebar_state="expanded"
+)
+
 # Init session_state
 for k, v in {
     "df_schedule": None,

@@ -11,18 +11,15 @@ def to_excel(df):
     """
     buffer = BytesIO()
 
-    # Convert Date column to datetime if it's not already
     df['Date'] = pd.to_datetime(df['Date'])
 
-    # Add day of week and week number
-    df['DayOfWeek'] = df['Date'].dt.dayofweek  # 0=Monday, 4=Friday
+    df['DayOfWeek'] = df['Date'].dt.dayofweek
     df['WeekNumber'] = df['Date'].dt.isocalendar().week
     df['Year'] = df['Date'].dt.year
 
     # Filter only Monday to Friday (0-4)
     df_weekdays = df[df['DayOfWeek'] <= 4].copy()
 
-    # Get all site columns (all columns except Date, DayOfWeek, WeekNumber, Year)
     site_columns = [col for col in df.columns if col not in ['Date', 'DayOfWeek', 'WeekNumber', 'Year']]
 
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
@@ -98,7 +95,6 @@ def to_excel(df):
 
                 for day_idx in range(5):
                     if day_idx in week_dates:
-                        # Find the value for this day
                         day_data = week_data[week_data['DayOfWeek'] == day_idx]
                         if not day_data.empty:
                             value = day_data.iloc[0][site_col]
