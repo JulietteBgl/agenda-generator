@@ -89,16 +89,15 @@ class ScheduleStorage:
         if result.empty:
             return {}
 
-        # Extraire year et quarter du schedule_id (format: T_1_2026)
         schedules = {}
         for _, row in result.iterrows():
-            parts = row['schedule_id'].split('_')  # ['T', '1', '2026']
+            parts = row['schedule_id'].split('_')  # ['T1', '2026']
+            quarter_str = parts[0][1:]
             schedules[row['schedule_id']] = {
-                'quarter': int(parts[1]),
-                'year': int(parts[2]),
+                'quarter': int(quarter_str),
+                'year': int(parts[1]),
                 'start_date': row['start_date'],
                 'saved_at': row['saved_at'],
-                'user_notes': ''  # Pas de colonne notes dans votre schéma
             }
 
         return schedules
