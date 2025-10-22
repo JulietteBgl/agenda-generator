@@ -1,14 +1,22 @@
 import streamlit as st
 from dateutil.relativedelta import relativedelta as rd
 from datetime import date
+from utils.storage_duckdb import ScheduleStorage
+from utils.github_sync import GitHubSync
 
-from utils.create_calendar import create_calendar_editor, create_visual_calendar, get_start_and_end_date, \
+from utils.create_calendar import create_calendar_editor, create_visual_calendar, get_start_date, \
     create_date_dropdown_list
 from utils.day_allocation import allocate_days
 from utils.tools import (
     load_config, get_working_days,
     schedule_to_dataframe, daterange, schedule_summary
 )
+
+# Stockage init
+@st.cache_resource
+def get_storage():
+    return ScheduleStorage()
+storage = get_storage()
 
 st.set_page_config(
     page_title="Planning Radiologues",
@@ -34,7 +42,7 @@ def reset_planning():
 st.title("Planning radiologues")
 
 col1, col2 = st.columns(2)
-start_dt, end_dt = get_start_and_end_date()
+start_dt = get_start_date()
 date_options = create_date_dropdown_list(start_dt)
 
 selected_date = st.selectbox(
@@ -118,7 +126,7 @@ if show_tables and st.session_state.df_schedule is not None:
     tab1_complete, tab2_complete = st.tabs(["📊 Tableau", "📅 Vue visuelle"])
 
     with tab1_complete:
-        edited_full = create_calendar_editor( # est-ce que je peux supprimer edited_full? pas utilisé
+        edited_full = create_calendar_editor(
             source=st.session_state.df_schedule,
             excel_name="planning_detaille",
         )
@@ -141,7 +149,7 @@ if show_tables and st.session_state.df_schedule is not None:
 
         st.markdown("### Total")
         df = schedule_summary(st.session_state.df_schedule)
-        st.dataframe(df)
+        st.dataframe(df, hide_index=True)
 
     with tab2_simple:
         create_visual_calendar(
@@ -151,4 +159,20 @@ if show_tables and st.session_state.df_schedule is not None:
 
         st.markdown("### Total")
         df = schedule_summary(st.session_state.df_schedule)
-        st.dataframe(df)
+        st.dataframe(df, hide_index=True)
+
+
+    # Save schedule
+    if st.button("💾 Sauvegarder"):
+        schedule_id = storage.save(
+            st.session_state.df_schedule,
+            selected_date
+        )
+
+        # Synchroniser avec GitHub
+        try:
+            sync = GitHubSync()
+            sync.push_database()
+            st.success(f"✅ Planning saved: {schedule_id}")
+        except Exception as e:
+            st.warning(f"⚠️ Error during sync: {e}")
