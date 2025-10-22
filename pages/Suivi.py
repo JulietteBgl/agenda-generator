@@ -1,6 +1,8 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+
+from utils.export_agenda import create_excel_export
 from utils.storage_duckdb import ScheduleStorage
 from utils.github_sync import GitHubSync
 
@@ -82,11 +84,30 @@ else:
 
     # ===== STATISTIQUES =====
     st.markdown("---")
-    st.markdown("## 📈 Statistiques d'affectation")
+    col_title, col_export = st.columns([3, 1])
 
     # Récupérer les années et trimestres disponibles
     years = sorted(list(set([meta['year'] for meta in all_schedules.values()])), reverse=True)
     current_year = datetime.now().year
+
+
+    with col_title:
+        st.markdown("## 📈 Statistiques d'affectation")
+
+    with col_export:
+        # Bouton d'export Excel (toujours visible si des plannings existent)
+        if all_schedules:
+            # Par défaut exporter l'année en cours
+            export_year = datetime.now().year
+            if years:
+                export_year = years[0]  # L'année la plus récente
+
+            excel_data = create_excel_export(storage, export_year)
+            st.download_button(
+                label="📥 Télécharger Excel",
+                data=excel_data,
+                file_name=f"planning_{export_year}.xlsx",
+            )
 
     # Filtres
     col1, col2 = st.columns(2)
