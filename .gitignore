@@ -6,3 +6,6 @@
 
 # Secrets Streamlit
 .streamlit/secrets.toml
+
+# saved schedules
+data/
