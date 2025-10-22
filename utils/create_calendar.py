@@ -44,43 +44,26 @@ def format_schedule_for_visual(schedule):
     return result
 
 
-def get_start_and_end_date():
+def get_start_date():
     """
-    Calculates the start and end dates based on a quarterly cycle.
+    Calculates the quarter start date based on a quarterly cycle.
     The quarters begin in January, April, July, and October.
 
     Returns:
-        tuple: A tuple containing two datetime objects: (start_date, end_date)
+        datetime: start_date
     """
-
     quarter_start_months = [1, 4, 7, 10]
 
     current_date = datetime.today()
     current_year = current_date.year
     current_month = current_date.month
 
-    # Determine the correct start month for the next quarter
-    start_month = None
-    start_year = current_year
-
-    for month_val in quarter_start_months:
+    for index, month_val in enumerate(quarter_start_months):
         if current_month < month_val:
-            start_month = month_val
-            break
+            return datetime(current_year, month_val, 1)
 
-    # If current_month is past the last quarter start,
-    # the next quarter starts in January of the next year.
-    if start_month is None:
-        start_month = quarter_start_months[0]
-        start_year += 1
-
-    # Construct the start date
-    start_date = datetime(start_year, start_month, 1)
-
-    # The end date is the day before the next quarter's start date
-    end_date = start_date + rd(months=3) - rd(days=1)
-
-    return start_date, end_date
+    # If past last quarter, return next year Q1
+    return datetime(current_year + 1, 1, 1)
 
 
 def create_date_dropdown_list(start_date, num_quarters=3):
