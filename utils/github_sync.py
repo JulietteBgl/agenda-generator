@@ -4,7 +4,6 @@ Synchronisation du fichier DuckDB avec GitHub
 import streamlit as st
 from github import Github, GithubException
 from pathlib import Path
-import base64
 import time
 
 
@@ -54,9 +53,6 @@ class GitHubSync:
             with open(file_path, 'rb') as f:
                 content = f.read()
 
-            # Encoder en base64
-            content_encoded = base64.b64encode(content).decode('utf-8')
-
             # Message de commit par défaut
             if commit_message is None:
                 commit_message = f"Update planning - {time.strftime('%Y-%m-%d %H:%M:%S')}"
@@ -72,7 +68,7 @@ class GitHubSync:
                 self.repo.update_file(
                     path=github_path,
                     message=commit_message,
-                    content=content_encoded,
+                    content=content.decode('latin1'),
                     sha=contents.sha,
                     branch="main"
                 )
@@ -83,7 +79,7 @@ class GitHubSync:
                     self.repo.create_file(
                         path=github_path,
                         message=commit_message,
-                        content=content_encoded,
+                        content=content.decode('latin1'),
                         branch="main"
                     )
                 else:
