@@ -119,6 +119,7 @@ def dynamic_input_data_editor(data, key, **_kwargs):
 
 def create_calendar_editor(source, excel_name, simplified=False):
     df = source.copy(deep=True)
+    df = df[["Date", "Affectation 1", "Affectation 2"]]
     if simplified:
         df["Affectation 1"] = df["Affectation 1"].str.replace(r"^majo.*", "Majo", case=False, regex=True)
         df["Affectation 2"] = df["Affectation 2"].str.replace(r"^majo.*", "Majo", case=False, regex=True)
