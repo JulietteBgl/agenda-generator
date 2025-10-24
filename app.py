@@ -126,10 +126,7 @@ if show_tables and st.session_state.df_schedule is not None:
     tab1_complete, tab2_complete = st.tabs(["📊 Tableau", "📅 Vue visuelle"])
 
     with tab1_complete:
-        edited_full = create_calendar_editor(
-            source=st.session_state.df_schedule,
-            excel_name="planning_detaille",
-        )
+        edited_full = create_calendar_editor(source=st.session_state.df_schedule)
         st.session_state.df_schedule = edited_full
 
     with tab2_complete:
@@ -141,11 +138,7 @@ if show_tables and st.session_state.df_schedule is not None:
     tab1_simple, tab2_simple = st.tabs(["📊 Tableau", "📅 Vue visuelle"])
 
     with tab1_simple:
-        create_calendar_editor(
-            source=st.session_state.df_schedule,
-            excel_name="planning_simple",
-            simplified=True
-        )
+        create_calendar_editor(source=st.session_state.df_schedule, simplified=True)
 
         st.markdown("### Total")
         df = schedule_summary(st.session_state.df_schedule)

@@ -1,5 +1,4 @@
 import streamlit as st
-from utils.export_agenda import to_excel
 from dateutil.relativedelta import relativedelta as rd
 import pandas as pd
 from datetime import datetime
@@ -117,7 +116,7 @@ def dynamic_input_data_editor(data, key, **_kwargs):
     return st.data_editor(**__kwargs)
 
 
-def create_calendar_editor(source, excel_name, simplified=False):
+def create_calendar_editor(source, simplified=False):
     df = source.copy(deep=True)
     df = df[["Date", "Affectation 1", "Affectation 2"]]
     if simplified:
@@ -133,9 +132,8 @@ def create_calendar_editor(source, excel_name, simplified=False):
         column_config=column_config,
         use_container_width=True,
         num_rows="dynamic",
-        key=f"editor_{excel_name}",
+        key=f"editor_{simplified}",
     )
-    st.download_button("Télécharger Excel", data=to_excel(edited_df), file_name=f"{excel_name}.xlsx")
     return edited_df
 
 
