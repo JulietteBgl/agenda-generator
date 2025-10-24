@@ -1,6 +1,7 @@
 """
-Synchronisation du fichier DuckDB avec GitHub
+Synchronizing the CSV file with GitHub
 """
+
 import streamlit as st
 from github import Github, GithubException
 from pathlib import Path
@@ -8,78 +9,66 @@ import time
 
 
 class GitHubSync:
-    """Synchronisation automatique avec GitHub"""
+
+    """Automatic synchronization of the CSV schedules with GitHub"""
 
     def __init__(self):
-        self.enabled = False  # Par défaut désactivé
+        self.enabled = False
         try:
-            # Configuration depuis secrets
             self.github_token = st.secrets["github"]["token"]
             self.repo_name = st.secrets["github"]["repo"]
 
             self.g = Github(self.github_token)
             self.repo = self.g.get_repo(self.repo_name)
-            self.enabled = True  # Activé si la config réussit
-        except Exception as e:
-            # Pas d'erreur si la config n'existe pas
+            self.enabled = True
+        except Exception:
             pass
 
-    def push_database(
-            self,
-            db_path: str = "data/planning.duckdb",
-            commit_message: str = None
+    def push_csv(
+        self,
+        csv_path: str = "data/planning_all.csv",
+        commit_message: str = None
     ) -> bool:
         """
-        Push le fichier DuckDB vers GitHub
+        Push the CSV file to GitHub
 
         Args:
-            db_path: Chemin du fichier DuckDB
-            commit_message: Message du commit (auto-généré si None)
-
-        Returns:
-            True si succès, False sinon
+            csv_path: Path to the CSV file
+            commit_message: Commit message (auto-generated if None)
         """
         if not self.enabled:
             return False
 
-        file_path = Path(db_path)
-
+        file_path = Path(csv_path)
         if not file_path.exists():
-            st.error(f"❌ Fichier database introuvable: {db_path}")
+            st.error(f"❌ Not found: {csv_path}")
             return False
 
         try:
-            # Lire le fichier
-            with open(file_path, 'rb') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            # Message de commit par défaut
             if commit_message is None:
-                commit_message = f"Update planning - {time.strftime('%Y-%m-%d %H:%M:%S')}"
+                commit_message = f"Update planning CSV - {time.strftime('%Y-%m-%d %H:%M:%S')}"
 
-            # Chemin dans le repo GitHub
             github_path = str(file_path)
 
             try:
-                # Récupérer le fichier existant
                 contents = self.repo.get_contents(github_path)
-
-                # Mettre à jour
                 self.repo.update_file(
                     path=github_path,
                     message=commit_message,
-                    content=content.decode('latin1'),
+                    content=content,
                     sha=contents.sha,
                     branch="main"
                 )
-
             except GithubException as e:
-                # Le fichier n'existe pas encore, le créer
+                # The file doesn’t exist yet → creating it
                 if e.status == 404:
                     self.repo.create_file(
                         path=github_path,
                         message=commit_message,
-                        content=content.decode('latin1'),
+                        content=content,
                         branch="main"
                     )
                 else:
@@ -91,12 +80,9 @@ class GitHubSync:
             st.error(f"❌ Erreur lors du push GitHub: {e}")
             return False
 
-    def get_last_commit_info(self, file_path: str = "data/planning.duckdb") -> dict:
+    def get_last_commit_info(self, file_path: str = "data/planning_all.csv") -> dict:
         """
-        Récupère les infos du dernier commit pour le fichier
-
-        Returns:
-            dict avec 'message', 'date', 'author'
+        Retrieve the latest commit information for the CSV file
         """
         if not self.enabled:
             return {}
@@ -104,7 +90,6 @@ class GitHubSync:
         try:
             commits = self.repo.get_commits(path=file_path)
             last_commit = commits[0]
-
             return {
                 'message': last_commit.commit.message,
                 'date': last_commit.commit.author.date.strftime('%Y-%m-%d %H:%M:%S'),

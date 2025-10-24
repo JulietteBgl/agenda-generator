@@ -1,7 +1,7 @@
 import streamlit as st
 from dateutil.relativedelta import relativedelta as rd
 from datetime import date
-from utils.storage_duckdb import ScheduleStorage
+from utils.storage_csv import ScheduleStorage
 from utils.github_sync import GitHubSync
 
 from utils.create_calendar import create_calendar_editor, create_visual_calendar, get_start_date, \
@@ -172,7 +172,7 @@ if show_tables and st.session_state.df_schedule is not None:
         # Synchroniser avec GitHub
         try:
             sync = GitHubSync()
-            sync.push_database()
+            sync.push_csv()
             st.success(f"✅ Planning saved: {schedule_id}")
         except Exception as e:
             st.warning(f"⚠️ Error during sync: {e}")

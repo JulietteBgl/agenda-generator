@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 
 from utils.export_agenda import create_excel_export
-from utils.storage_duckdb import ScheduleStorage
+from utils.storage_csv import ScheduleStorage
 from utils.github_sync import GitHubSync
 
 # Configuration de la page
@@ -63,7 +63,7 @@ else:
 
                 # Sync avec GitHub
                 sync = GitHubSync()
-                sync.push_database(commit_message=f"Delete planning {selected_schedule}")
+                sync.push_csv(commit_message=f"Delete planning {selected_schedule}")
 
                 st.success(f"Planning {selected_schedule} supprimé")
                 del st.session_state['confirm_delete']
