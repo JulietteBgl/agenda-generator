@@ -1,5 +1,48 @@
 from collections import defaultdict
 from math import floor
+import random
+
+
+def allocate_majorelle_fridays(majorelle_sites, working_days):
+    """
+    Pré-alloue les vendredis pour les sites Majorelle
+    Chaque site doit avoir exactement 4 vendredis par trimestre
+    """
+    fridays = [day for day in working_days if day.weekday() == 4]  # 4 = vendredi
+    friday_allocation = {}
+
+    if not majorelle_sites or not fridays:
+        return friday_allocation
+
+    # Vérifier qu'on a assez de vendredis (au moins 12 pour 3 sites * 4 vendredis)
+    total_fridays_needed = len(majorelle_sites) * 4
+    if len(fridays) < total_fridays_needed:
+        print(f"Warning: Not enough Fridays ({len(fridays)}) for Majorelle sites (need {total_fridays_needed})")
+        return friday_allocation
+
+    # Diviser les vendredis en groupes pour assurer une distribution équilibrée
+    # On divise en 4 périodes pour assurer que chaque site ait des vendredis répartis
+    period_size = len(fridays) // 4
+    periods = []
+    for i in range(4):
+        start_idx = i * period_size
+        if i == 3:  # Dernière période prend les vendredis restants
+            periods.append(fridays[start_idx:])
+        else:
+            periods.append(fridays[start_idx:start_idx + period_size])
+
+    # Allouer un vendredi de chaque période à chaque site
+    for site in majorelle_sites:
+        friday_allocation[site] = []
+        for period in periods:
+            if period:
+                # Choisir un vendredi de cette période qui n'est pas encore alloué
+                available = [f for f in period if not any(f in friday_allocation[s] for s in friday_allocation)]
+                if available:
+                    chosen = available[0]  # On pourrait randomiser ici si souhaité
+                    friday_allocation[site].append(chosen)
+
+    return friday_allocation
 
 
 def allocate_days(config, working_days):
@@ -9,6 +52,13 @@ def allocate_days(config, working_days):
     schedule = defaultdict(list)
     if total_slots <= 0:
         return schedule
+
+    # Pré-allouer les vendredis pour les sites Majorelle
+    majorelle_sites = [k for k in config if k.startswith('majorelle_')]
+    friday_allocation = allocate_majorelle_fridays(majorelle_sites, working_days)
+
+    # Tracker pour les vendredis Majorelle déjà utilisés
+    majorelle_friday_used = {site: 0 for site in majorelle_sites}
 
     def site_is_available(place_key, day_obj):
         # check if a site is available on a specific day
@@ -87,16 +137,49 @@ def allocate_days(config, working_days):
             print(f"No more slots available for day {day}")
             break
 
+        # Vérifier si c'est un vendredi et si on doit placer un site Majorelle
+        is_friday = day.weekday() == 4
+        majorelle_for_today = None
+
+        if is_friday:
+            # Vérifier si un site Majorelle doit être placé ce vendredi
+            for site in majorelle_sites:
+                if site in friday_allocation and day in friday_allocation[site]:
+                    if majorelle_friday_used[site] < 4:  # Limite de 4 vendredis
+                        majorelle_for_today = site
+                        majorelle_friday_used[site] += 1
+                        break
+
         first_site = None
         idx_first = None
-        for i, site in enumerate(seq):
-            if site_is_available(site, day):
-                first_site = site
-                idx_first = i
-                break
+
+        # Si on a un site Majorelle à placer ce vendredi, le prioriser
+        if majorelle_for_today and majorelle_for_today in seq:
+            # Trouver l'index du site Majorelle dans seq
+            for i, site in enumerate(seq):
+                if site == majorelle_for_today:
+                    first_site = site
+                    idx_first = i
+                    break
+
+        # Sinon, procéder normalement
+        if first_site is None:
+            for i, site in enumerate(seq):
+                # Éviter de placer un site Majorelle le vendredi s'il a déjà ses 4 vendredis
+                if is_friday and site in majorelle_sites:
+                    if majorelle_friday_used.get(site, 0) >= 4:
+                        continue
+
+                if site_is_available(site, day):
+                    first_site = site
+                    idx_first = i
+
+                    # Si c'est un vendredi et un site Majorelle, compter
+                    if is_friday and site in majorelle_sites:
+                        majorelle_friday_used[site] = majorelle_friday_used.get(site, 0) + 1
+                    break
 
         if first_site is not None:
-
             # Remove first site from sequence
             seq.pop(idx_first)
 
@@ -114,11 +197,20 @@ def allocate_days(config, working_days):
             else:
                 idx_second = None
                 for i, site in enumerate(seq):
+                    # Éviter de placer un autre site Majorelle le vendredi s'il a déjà ses 4 vendredis
+                    if is_friday and site in majorelle_sites:
+                        if majorelle_friday_used.get(site, 0) >= 4:
+                            continue
+
                     if (site[:9] != first_site[:9] and
                             site not in list_paired_sites and
                             site_is_available(site, day)):
                         second_site = site
                         idx_second = i
+
+                        # Si c'est un vendredi et un site Majorelle, compter
+                        if is_friday and site in majorelle_sites:
+                            majorelle_friday_used[site] = majorelle_friday_used.get(site, 0) + 1
                         break
 
                 if idx_second is not None:
@@ -145,12 +237,18 @@ def allocate_days(config, working_days):
     print("\n=== Backfilling stage===")
     print(f"Remaining sites in seq: {len(seq)}")
 
+    # Afficher le compte de vendredis pour chaque site Majorelle
+    print("\nVendredis alloués aux sites Majorelle avant backfilling:")
+    for site in majorelle_sites:
+        print(f"  {config[site]['name']}: {majorelle_friday_used.get(site, 0)} vendredis")
+
     # Count None for each date
     none_counts = {day: schedule[day].count(None) for day in schedule}
     days_with_none = [day for day in schedule if none_counts[day] > 0]
 
     if days_with_none and seq:
         print(f"Number of days with None: {len(days_with_none)}")
+        print("Note: Durant le backfilling, les sites Majorelle peuvent avoir 3-5 vendredis (flexibilité ±1)")
 
         # For each remaining site in seq, find an exchange
         remaining_seq = seq.copy()
@@ -162,6 +260,11 @@ def allocate_days(config, working_days):
                 continue
 
             print(f"\nTrying to place: {site_to_place} ({config[site_to_place]['name']})")
+
+            # Si c'est un site Majorelle, afficher son compte actuel de vendredis
+            if site_to_place in majorelle_sites:
+                current_fridays = majorelle_friday_used.get(site_to_place, 0)
+                print(f"  (Site Majorelle avec {current_fridays} vendredis actuellement)")
 
             # Find all days with None
             placed = False
@@ -197,6 +300,16 @@ def allocate_days(config, working_days):
                             # Condition 2: site_to_place must be available on swap_day (to replace site_to_swap)
                             if not site_is_available(site_to_place, swap_day):
                                 continue
+
+                            # MODIFICATION: Flexibilité pour les vendredis Majorelle durant le backfilling (3-5 vendredis OK)
+                            if swap_day.weekday() == 4 and site_to_place in majorelle_sites:
+                                # Permettre jusqu'à 5 vendredis durant le backfilling
+                                if majorelle_friday_used.get(site_to_place, 0) >= 5:
+                                    continue
+                            if problem_day.weekday() == 4 and site_key_to_swap in majorelle_sites:
+                                # Permettre jusqu'à 5 vendredis durant le backfilling
+                                if majorelle_friday_used.get(site_key_to_swap, 0) >= 5:
+                                    continue
 
                             # Check pair_same_day constraints for site_to_swap
                             if config[site_key_to_swap].get("pair_same_day", False):
@@ -241,9 +354,21 @@ def allocate_days(config, working_days):
 
                             # Make the exchange!
                             print(f"  Exchange found:")
-                            print(f"    - {config[site_to_place]['name']} to {swap_day.strftime('%Y-%m-%d')}")
                             print(
-                                f"    - {site_name_to_swap} from {swap_day.strftime('%Y-%m-%d')} to {problem_day.strftime('%Y-%m-%d')}")
+                                f"    - {config[site_to_place]['name']} to {swap_day.strftime('%Y-%m-%d')} ({'Vendredi' if swap_day.weekday() == 4 else 'autre jour'})")
+                            print(
+                                f"    - {site_name_to_swap} from {swap_day.strftime('%Y-%m-%d')} to {problem_day.strftime('%Y-%m-%d')} ({'Vendredi' if problem_day.weekday() == 4 else 'autre jour'})")
+
+                            # Mettre à jour le compteur de vendredis si nécessaire
+                            if swap_day.weekday() == 4 and site_to_place in majorelle_sites:
+                                majorelle_friday_used[site_to_place] = majorelle_friday_used.get(site_to_place, 0) + 1
+                                print(
+                                    f"    → {config[site_to_place]['name']} a maintenant {majorelle_friday_used[site_to_place]} vendredis")
+                            if problem_day.weekday() == 4 and site_key_to_swap in majorelle_sites:
+                                majorelle_friday_used[site_key_to_swap] = majorelle_friday_used.get(site_key_to_swap,
+                                                                                                    0) + 1
+                                print(
+                                    f"    → {config[site_key_to_swap]['name']} a maintenant {majorelle_friday_used[site_key_to_swap]} vendredis")
 
                             schedule[problem_day][slot_idx] = site_name_to_swap
                             schedule[swap_day][swap_slot_idx] = config[site_to_place]['name']
@@ -262,5 +387,143 @@ def allocate_days(config, working_days):
     final_none_counts = {day: schedule[day].count(None) for day in working_days}
     total_none = sum(final_none_counts.values())
     print(f"\n=== Final result: {total_none} remaining None, {len(seq)} unassigned sites in seq ===")
+
+    # Phase de rééquilibrage des vendredis Majorelle
+    print("\n=== Phase de rééquilibrage des vendredis Majorelle ===")
+
+    # Compter les vendredis actuels pour chaque site Majorelle
+    majorelle_friday_count = {}
+    for site in majorelle_sites:
+        count = 0
+        for day in working_days:
+            if day.weekday() == 4:  # Vendredi
+                if config[site]['name'] in schedule[day]:
+                    count += 1
+        majorelle_friday_count[site] = count
+
+    print("Compte initial des vendredis:")
+    for site in majorelle_sites:
+        print(f"  {config[site]['name']}: {majorelle_friday_count[site]} vendredis")
+
+    # Identifier les sites hors limites (< 3 ou > 5)
+    sites_under = [site for site in majorelle_sites if majorelle_friday_count[site] < 3]
+    sites_over = [site for site in majorelle_sites if majorelle_friday_count[site] > 5]
+    sites_ok = [site for site in majorelle_sites if 3 <= majorelle_friday_count[site] <= 5]
+
+    # Essayer de rééquilibrer : prendre des vendredis des sites à 4-5 pour les donner aux sites < 3
+    if sites_under:
+        print(f"\nSites Majorelle avec moins de 3 vendredis: {[config[s]['name'] for s in sites_under]}")
+
+        for site_under in sites_under:
+            while majorelle_friday_count[site_under] < 3:
+                # Chercher un site donneur (priorité: 5 vendredis, puis 4 vendredis)
+                donor_candidates = [s for s in majorelle_sites if majorelle_friday_count[s] >= 4 and s != site_under]
+                donor_candidates.sort(
+                    key=lambda s: -majorelle_friday_count[s])  # Prioriser ceux avec le plus de vendredis
+
+                exchange_done = False
+                for donor_site in donor_candidates:
+                    if exchange_done:
+                        break
+
+                    # Trouver un vendredi du donneur et un non-vendredi du receveur pour échanger
+                    for day in working_days:
+                        if exchange_done:
+                            break
+
+                        # Chercher un vendredi où le donneur est présent
+                        if day.weekday() == 4 and config[donor_site]['name'] in schedule[day]:
+                            donor_slot = schedule[day].index(config[donor_site]['name'])
+
+                            # Chercher un jour non-vendredi où le receveur est présent
+                            for swap_day in working_days:
+                                if swap_day.weekday() != 4 and config[site_under]['name'] in schedule[swap_day]:
+                                    receiver_slot = schedule[swap_day].index(config[site_under]['name'])
+
+                                    # Vérifier que les deux peuvent échanger leurs jours
+                                    if (site_is_available(site_under, day) and
+                                            site_is_available(donor_site, swap_day)):
+
+                                        # Vérifier les contraintes avec les autres affectations
+                                        other_friday_slot = 1 - donor_slot
+                                        other_swap_slot = 1 - receiver_slot
+
+                                        friday_other = schedule[day][other_friday_slot]
+                                        swap_other = schedule[swap_day][other_swap_slot]
+
+                                        # Vérifier qu'on ne crée pas de conflits
+                                        valid_exchange = True
+
+                                        # Pas deux fois le même site
+                                        if friday_other == config[site_under]['name']:
+                                            valid_exchange = False
+                                        if swap_other == config[donor_site]['name']:
+                                            valid_exchange = False
+
+                                        # Pas deux sites Majorelle ensemble
+                                        friday_other_key = get_site_key_from_name(
+                                            friday_other) if friday_other else None
+                                        swap_other_key = get_site_key_from_name(swap_other) if swap_other else None
+
+                                        if friday_other_key and site_under[:9] == friday_other_key[:9]:
+                                            valid_exchange = False
+                                        if swap_other_key and donor_site[:9] == swap_other_key[:9]:
+                                            valid_exchange = False
+
+                                        # Vérifier pair_same_day
+                                        if config[donor_site].get("pair_same_day", False):
+                                            if schedule[swap_day].count(config[donor_site]['name']) != 1:
+                                                valid_exchange = False
+                                        if config[site_under].get("pair_same_day", False):
+                                            if schedule[day].count(config[site_under]['name']) != 1:
+                                                valid_exchange = False
+
+                                        if valid_exchange:
+                                            print(f"\n✓ Rééquilibrage trouvé:")
+                                            print(
+                                                f"  {config[donor_site]['name']} (donneur avec {majorelle_friday_count[donor_site]} vendredis)")
+                                            print(
+                                                f"    passe du vendredi {day.strftime('%Y-%m-%d')} au {swap_day.strftime('%Y-%m-%d')}")
+                                            print(
+                                                f"  {config[site_under]['name']} (receveur avec {majorelle_friday_count[site_under]} vendredis)")
+                                            print(
+                                                f"    passe du {swap_day.strftime('%Y-%m-%d')} au vendredi {day.strftime('%Y-%m-%d')}")
+
+                                            # Faire l'échange
+                                            schedule[day][donor_slot] = config[site_under]['name']
+                                            schedule[swap_day][receiver_slot] = config[donor_site]['name']
+
+                                            # Mettre à jour les compteurs
+                                            majorelle_friday_count[donor_site] -= 1
+                                            majorelle_friday_count[site_under] += 1
+
+                                            print(
+                                                f"  Nouveau compte: {config[donor_site]['name']}={majorelle_friday_count[donor_site]}, {config[site_under]['name']}={majorelle_friday_count[site_under]}")
+
+                                            exchange_done = True
+                                            break
+
+                if not exchange_done:
+                    print(
+                        f"\n⚠ Impossible de rééquilibrer {config[site_under]['name']} (reste à {majorelle_friday_count[site_under]} vendredis)")
+                    break
+
+    # Vérification finale des vendredis Majorelle
+    print("\n=== Vérification finale des vendredis Majorelle ===")
+    print("Objectif: 4 vendredis par site (flexibilité 3-5 acceptée si nécessaire)")
+    for site in majorelle_sites:
+        count = 0
+        for day in working_days:
+            if day.weekday() == 4:  # Vendredi
+                if config[site]['name'] in schedule[day]:
+                    count += 1
+        status = ""
+        if count == 4:
+            status = "✓ Objectif atteint"
+        elif count in [3, 5]:
+            status = "⚠ Acceptable (flexibilité)"
+        else:
+            status = "✗ Hors limites"
+        print(f"{config[site]['name']}: {count} vendredis {status}")
 
     return schedule
