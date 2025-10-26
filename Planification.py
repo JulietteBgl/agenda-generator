@@ -11,11 +11,15 @@ from utils.tools import (
     load_config, get_working_days,
     schedule_to_dataframe, daterange, schedule_summary
 )
+import copy
+
 
 # Stockage init
 @st.cache_resource
 def get_storage():
     return ScheduleStorage()
+
+
 storage = get_storage()
 
 st.set_page_config(
@@ -29,6 +33,7 @@ for k, v in {
     "df_schedule": None,
     "df_schedule_simple": None,
     "generated_for": None,
+    "holidays_config": {},
 }.items():
     st.session_state.setdefault(k, v)
 
@@ -37,6 +42,7 @@ def reset_planning():
     st.session_state.df_schedule = None
     st.session_state.df_schedule_simple = None
     st.session_state.generated_for = None
+    st.session_state.holidays_config = {}
 
 
 st.title("Planning radiologues")
@@ -56,41 +62,111 @@ selected_date = selected_date.date()
 end_date = selected_date + rd(months=3) - rd(days=1)
 default_start_date = max(selected_date, date.today())
 
-config = load_config('config/config.yml')
+# Load config and make a deep copy to avoid modifying the original
+config_original = load_config('config/config.yml')
+config = copy.deepcopy(config_original)
 
 st.markdown("### Configuration des congés")
 
 with st.expander("Ajouter des congés (plages ou dates)", expanded=False):
-    # Réinitialise les congés à vide par défaut
-    for place_cfg in config.values():
+    for place_key, place_cfg in config.items():
         if place_cfg.get("advanced_split"):
-            place_cfg['holidays'] = []
+            if place_key not in st.session_state.holidays_config:
+                st.session_state.holidays_config[place_key] = {
+                    'holidays': [],
+                    'start_vac1': None,
+                    'end_vac1': None,
+                    'start_vac2': None,
+                    'end_vac2': None,
+                    'start_vac3': None,
+                    'end_vac3': None,
+                    'manual_days': ""
+                }
 
     for place_key, place_cfg in config.items():
         if place_cfg.get("advanced_split"):
             st.markdown(f"**{place_cfg['name']}**")
 
+            place_cfg['holidays'] = []
+
             col1, col2 = st.columns(2)
             with col1:
-                start_vac1 = st.date_input(f"Début congé", value=None, min_value=default_start_date, max_value=end_date, key=f"start_{place_key}_1")
-                start_vac2 = st.date_input(f"Début congé", value=None, min_value=default_start_date, max_value=end_date, key=f"start_{place_key}_2")
-                start_vac3 = st.date_input(f"Début congé", value=None, min_value=default_start_date, max_value=end_date, key=f"start_{place_key}_3")
+                start_vac1 = st.date_input(
+                    f"Début congé",
+                    value=st.session_state.holidays_config[place_key]['start_vac1'],
+                    min_value=default_start_date,
+                    max_value=end_date,
+                    key=f"start_{place_key}_1"
+                )
+                start_vac2 = st.date_input(
+                    f"Début congé",
+                    value=st.session_state.holidays_config[place_key]['start_vac2'],
+                    min_value=default_start_date,
+                    max_value=end_date,
+                    key=f"start_{place_key}_2"
+                )
+                start_vac3 = st.date_input(
+                    f"Début congé",
+                    value=st.session_state.holidays_config[place_key]['start_vac3'],
+                    min_value=default_start_date,
+                    max_value=end_date,
+                    key=f"start_{place_key}_3"
+                )
             with col2:
-                end_vac1 = st.date_input(f"Fin congé", value=None, min_value=start_vac1 if start_vac1 else default_start_date, max_value=end_date, key=f"end_{place_key}_1")
-                end_vac2 = st.date_input(f"Fin congé", value=None, min_value=start_vac2 if start_vac2 else default_start_date, max_value=end_date, key=f"end_{place_key}_2")
-                end_vac3 = st.date_input(f"Fin congé", value=None, min_value=start_vac2 if start_vac3 else default_start_date, max_value=end_date, key=f"end_{place_key}_3")
+                end_vac1 = st.date_input(
+                    f"Fin congé",
+                    value=st.session_state.holidays_config[place_key]['end_vac1'],
+                    min_value=start_vac1 if start_vac1 else default_start_date,
+                    max_value=end_date,
+                    key=f"end_{place_key}_1"
+                )
+                end_vac2 = st.date_input(
+                    f"Fin congé",
+                    value=st.session_state.holidays_config[place_key]['end_vac2'],
+                    min_value=start_vac2 if start_vac2 else default_start_date,
+                    max_value=end_date,
+                    key=f"end_{place_key}_2"
+                )
+                end_vac3 = st.date_input(
+                    f"Fin congé",
+                    value=st.session_state.holidays_config[place_key]['end_vac3'],
+                    min_value=start_vac3 if start_vac3 else default_start_date,
+                    max_value=end_date,
+                    key=f"end_{place_key}_3"
+                )
 
+            # Update session state
+            st.session_state.holidays_config[place_key]['start_vac1'] = start_vac1
+            st.session_state.holidays_config[place_key]['end_vac1'] = end_vac1
+            st.session_state.holidays_config[place_key]['start_vac2'] = start_vac2
+            st.session_state.holidays_config[place_key]['end_vac2'] = end_vac2
+            st.session_state.holidays_config[place_key]['start_vac3'] = start_vac3
+            st.session_state.holidays_config[place_key]['end_vac3'] = end_vac3
+
+            # Process date ranges
+            holidays_list = []
             for start_vac, end_vac in zip([start_vac1, start_vac2, start_vac3], [end_vac1, end_vac2, end_vac3]):
                 if start_vac and end_vac:
                     days = [str(d) for d in daterange(start_vac, end_vac)]
-                    place_cfg.setdefault('holidays', []).extend(days)
+                    holidays_list.extend(days)
 
             manual_days = st.text_input(
                 f"Autres jours (AAAA-MM-JJ séparés par ,)",
-                value=", ".join(place_cfg.get("holidays", [])),
+                value=st.session_state.holidays_config[place_key]['manual_days'],
                 key=f"manual_days_{place_key}"
             )
-            place_cfg['holidays'] = list(set([d.strip() for d in manual_days.split(",") if d.strip()]))
+
+            # Update session state
+            st.session_state.holidays_config[place_key]['manual_days'] = manual_days
+
+            # Process manual days
+            if manual_days:
+                manual_days_list = [d.strip() for d in manual_days.split(",") if d.strip()]
+                holidays_list.extend(manual_days_list)
+
+            # Update the config with all holidays (removing duplicates)
+            place_cfg['holidays'] = list(set(holidays_list))
+            st.session_state.holidays_config[place_key]['holidays'] = place_cfg['holidays']
 
 for key in ["df_schedule", "df_schedule_simple"]:
     if key not in st.session_state:
@@ -105,7 +181,6 @@ if st.button("Générer le planning"):
         schedule_full = allocate_days(config, working_days)
 
         st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
-
         st.session_state.generated_for = st.session_state.selected_date
 
         st.success(f"Planning généré pour {len(working_days)} jours ouvrés.")
@@ -153,7 +228,6 @@ if show_tables and st.session_state.df_schedule is not None:
         st.markdown("### Total")
         df = schedule_summary(st.session_state.df_schedule)
         st.dataframe(df, hide_index=True)
-
 
     # Save schedule
     if st.button("💾 Sauvegarder"):
