@@ -1,6 +1,5 @@
 from collections import defaultdict
 from math import floor
-import random
 
 
 def allocate_majorelle_fridays(majorelle_sites, working_days):
@@ -603,7 +602,6 @@ def allocate_days(config, working_days):
             if day.weekday() == 4:  # Vendredi
                 if config[site]['name'] in schedule[day]:
                     count += 1
-        status = ""
         if count == 4:
             status = "✓ Objectif atteint"
         elif count in [3, 5]:
