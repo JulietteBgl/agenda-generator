@@ -405,24 +405,22 @@ def allocate_days(config, working_days):
     for site in majorelle_sites:
         print(f"  {config[site]['name']}: {majorelle_friday_count[site]} vendredis")
 
-    # Identifier les sites hors limites (< 3 ou > 5)
+    # Identifier les sites hors limites
     sites_under = [site for site in majorelle_sites if majorelle_friday_count[site] < 3]
-    sites_over = [site for site in majorelle_sites if majorelle_friday_count[site] > 5]
-    sites_ok = [site for site in majorelle_sites if 3 <= majorelle_friday_count[site] <= 5]
 
-    # Essayer de rééquilibrer : prendre des vendredis des sites à 4-5 pour les donner aux sites < 3
+    # Essayer de rééquilibrer : prendre des vendredis pour les donner aux sites < 3
     if sites_under:
         print(f"\nSites Majorelle avec moins de 3 vendredis: {[config[s]['name'] for s in sites_under]}")
 
         for site_under in sites_under:
             while majorelle_friday_count[site_under] < 3:
-                # Chercher un site donneur (priorité: 5 vendredis, puis 4 vendredis)
-                donor_candidates = [s for s in majorelle_sites if majorelle_friday_count[s] >= 4 and s != site_under]
-                donor_candidates.sort(
-                    key=lambda s: -majorelle_friday_count[s])  # Prioriser ceux avec le plus de vendredis
-
                 exchange_done = False
-                for donor_site in donor_candidates:
+
+                # PRIORITÉ 1: Chercher d'abord dans les sites NON-Majorelle
+                non_majorelle_sites = [s for s in config.keys() if s not in majorelle_sites]
+
+                print(f"\n  Tentative d'échange avec des sites NON-Majorelle pour {config[site_under]['name']}...")
+                for donor_site in non_majorelle_sites:
                     if exchange_done:
                         break
 
@@ -431,11 +429,11 @@ def allocate_days(config, working_days):
                         if exchange_done:
                             break
 
-                        # Chercher un vendredi où le donneur est présent
+                        # Chercher un vendredi où le donneur NON-Majorelle est présent
                         if day.weekday() == 4 and config[donor_site]['name'] in schedule[day]:
                             donor_slot = schedule[day].index(config[donor_site]['name'])
 
-                            # Chercher un jour non-vendredi où le receveur est présent
+                            # Chercher un jour non-vendredi où le receveur (Majorelle) est présent
                             for swap_day in working_days:
                                 if swap_day.weekday() != 4 and config[site_under]['name'] in schedule[swap_day]:
                                     receiver_slot = schedule[swap_day].index(config[site_under]['name'])
@@ -460,7 +458,7 @@ def allocate_days(config, working_days):
                                         if swap_other == config[donor_site]['name']:
                                             valid_exchange = False
 
-                                        # Pas deux sites Majorelle ensemble
+                                        # Pas deux sites du même groupe ensemble
                                         friday_other_key = get_site_key_from_name(
                                             friday_other) if friday_other else None
                                         swap_other_key = get_site_key_from_name(swap_other) if swap_other else None
@@ -479,13 +477,13 @@ def allocate_days(config, working_days):
                                                 valid_exchange = False
 
                                         if valid_exchange:
-                                            print(f"\n✓ Rééquilibrage trouvé:")
+                                            print(f"\n✓ Rééquilibrage trouvé avec site NON-Majorelle:")
                                             print(
-                                                f"  {config[donor_site]['name']} (donneur avec {majorelle_friday_count[donor_site]} vendredis)")
+                                                f"  {config[donor_site]['name']} (NON-Majorelle)")
                                             print(
                                                 f"    passe du vendredi {day.strftime('%Y-%m-%d')} au {swap_day.strftime('%Y-%m-%d')}")
                                             print(
-                                                f"  {config[site_under]['name']} (receveur avec {majorelle_friday_count[site_under]} vendredis)")
+                                                f"  {config[site_under]['name']} (Majorelle avec {majorelle_friday_count[site_under]} vendredis)")
                                             print(
                                                 f"    passe du {swap_day.strftime('%Y-%m-%d')} au vendredi {day.strftime('%Y-%m-%d')}")
 
@@ -493,15 +491,103 @@ def allocate_days(config, working_days):
                                             schedule[day][donor_slot] = config[site_under]['name']
                                             schedule[swap_day][receiver_slot] = config[donor_site]['name']
 
-                                            # Mettre à jour les compteurs
-                                            majorelle_friday_count[donor_site] -= 1
+                                            # Mettre à jour le compteur pour le site Majorelle
                                             majorelle_friday_count[site_under] += 1
 
                                             print(
-                                                f"  Nouveau compte: {config[donor_site]['name']}={majorelle_friday_count[donor_site]}, {config[site_under]['name']}={majorelle_friday_count[site_under]}")
+                                                f"  Nouveau compte: {config[site_under]['name']}={majorelle_friday_count[site_under]} vendredis")
 
                                             exchange_done = True
                                             break
+
+                # PRIORITÉ 2: Si pas d'échange trouvé avec les non-Majorelle, chercher dans les sites Majorelle (4-5 vendredis)
+                if not exchange_done:
+                    print(f"\n  Pas d'échange trouvé avec les NON-Majorelle, tentative avec les sites Majorelle...")
+                    donor_candidates = [s for s in majorelle_sites if
+                                        majorelle_friday_count[s] >= 4 and s != site_under]
+                    donor_candidates.sort(
+                        key=lambda s: -majorelle_friday_count[s])  # Prioriser ceux avec le plus de vendredis
+
+                    for donor_site in donor_candidates:
+                        if exchange_done:
+                            break
+
+                        # Trouver un vendredi du donneur et un non-vendredi du receveur pour échanger
+                        for day in working_days:
+                            if exchange_done:
+                                break
+
+                            # Chercher un vendredi où le donneur est présent
+                            if day.weekday() == 4 and config[donor_site]['name'] in schedule[day]:
+                                donor_slot = schedule[day].index(config[donor_site]['name'])
+
+                                # Chercher un jour non-vendredi où le receveur est présent
+                                for swap_day in working_days:
+                                    if swap_day.weekday() != 4 and config[site_under]['name'] in schedule[swap_day]:
+                                        receiver_slot = schedule[swap_day].index(config[site_under]['name'])
+
+                                        # Vérifier que les deux peuvent échanger leurs jours
+                                        if (site_is_available(site_under, day) and
+                                                site_is_available(donor_site, swap_day)):
+
+                                            # Vérifier les contraintes avec les autres affectations
+                                            other_friday_slot = 1 - donor_slot
+                                            other_swap_slot = 1 - receiver_slot
+
+                                            friday_other = schedule[day][other_friday_slot]
+                                            swap_other = schedule[swap_day][other_swap_slot]
+
+                                            # Vérifier qu'on ne crée pas de conflits
+                                            valid_exchange = True
+
+                                            # Pas deux fois le même site
+                                            if friday_other == config[site_under]['name']:
+                                                valid_exchange = False
+                                            if swap_other == config[donor_site]['name']:
+                                                valid_exchange = False
+
+                                            # Pas deux sites Majorelle ensemble
+                                            friday_other_key = get_site_key_from_name(
+                                                friday_other) if friday_other else None
+                                            swap_other_key = get_site_key_from_name(swap_other) if swap_other else None
+
+                                            if friday_other_key and site_under[:9] == friday_other_key[:9]:
+                                                valid_exchange = False
+                                            if swap_other_key and donor_site[:9] == swap_other_key[:9]:
+                                                valid_exchange = False
+
+                                            # Vérifier pair_same_day
+                                            if config[donor_site].get("pair_same_day", False):
+                                                if schedule[swap_day].count(config[donor_site]['name']) != 1:
+                                                    valid_exchange = False
+                                            if config[site_under].get("pair_same_day", False):
+                                                if schedule[day].count(config[site_under]['name']) != 1:
+                                                    valid_exchange = False
+
+                                            if valid_exchange:
+                                                print(f"\n✓ Rééquilibrage trouvé avec site Majorelle:")
+                                                print(
+                                                    f"  {config[donor_site]['name']} (donneur Majorelle avec {majorelle_friday_count[donor_site]} vendredis)")
+                                                print(
+                                                    f"    passe du vendredi {day.strftime('%Y-%m-%d')} au {swap_day.strftime('%Y-%m-%d')}")
+                                                print(
+                                                    f"  {config[site_under]['name']} (receveur Majorelle avec {majorelle_friday_count[site_under]} vendredis)")
+                                                print(
+                                                    f"    passe du {swap_day.strftime('%Y-%m-%d')} au vendredi {day.strftime('%Y-%m-%d')}")
+
+                                                # Faire l'échange
+                                                schedule[day][donor_slot] = config[site_under]['name']
+                                                schedule[swap_day][receiver_slot] = config[donor_site]['name']
+
+                                                # Mettre à jour les compteurs
+                                                majorelle_friday_count[donor_site] -= 1
+                                                majorelle_friday_count[site_under] += 1
+
+                                                print(
+                                                    f"  Nouveau compte: {config[donor_site]['name']}={majorelle_friday_count[donor_site]}, {config[site_under]['name']}={majorelle_friday_count[site_under]}")
+
+                                                exchange_done = True
+                                                break
 
                 if not exchange_done:
                     print(
