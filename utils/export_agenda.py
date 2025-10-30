@@ -84,7 +84,7 @@ def create_excel_export(storage, year):
                     for day_idx in range(5):
                         if day_idx in week_dates:
                             date_str = week_dates[day_idx].strftime('%d/%m')
-                            worksheet.write(row, day_idx, f"{days_of_week[day_idx]}\n{date_str}", header_format)
+                            worksheet.write(row, day_idx, f"{days_of_week[day_idx]} {date_str}", header_format)
                         else:
                             worksheet.write(row, day_idx, days_of_week[day_idx], header_format)
 
