@@ -38,9 +38,10 @@ def schedule_to_dataframe(schedule):
     return pd.DataFrame(rows)
 
 
-def schedule_summary(schedule):
+def schedule_summary(schedule, is_detailed):
     affectations = list(schedule["Affectation 1"]) + list(schedule["Affectation 2"])
-    affectations = ['Majo' if isinstance(aff, str) and aff.lower().startswith('majo') else aff for aff in affectations]
+    if is_detailed:
+        affectations = ['Majo' if isinstance(aff, str) and aff.lower().startswith('majo') else aff for aff in affectations]
     count = Counter(affectations)
     summary = pd.DataFrame(list(count.items()), columns=['Lieu', 'Nombre vacations'])
     return summary.sort_values(by='Nombre vacations', ascending=False)

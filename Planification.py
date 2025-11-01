@@ -12,6 +12,7 @@ from utils.tools import (
     schedule_to_dataframe, daterange, schedule_summary
 )
 import copy
+import pandas as pd
 
 
 # Stockage init
@@ -215,19 +216,98 @@ if show_tables and st.session_state.df_schedule is not None:
     with tab1_simple:
         create_calendar_editor(source=st.session_state.df_schedule, simplified=True)
 
-        st.markdown("### Total")
-        df = schedule_summary(st.session_state.df_schedule)
-        st.dataframe(df, hide_index=True)
-
     with tab2_simple:
         create_visual_calendar(
             source=st.session_state.df_schedule,
             simplified=True
         )
 
-        st.markdown("### Total")
-        df = schedule_summary(st.session_state.df_schedule)
-        st.dataframe(df, hide_index=True)
+    # Section des statistiques avec 3 onglets
+    st.markdown("## 📊 Statistiques du planning")
+    stats_tab1, stats_tab2, stats_tab3 = st.tabs([
+        "📈 Total par site",
+        "📊 Total global",
+        "📅 Vendredis Majorelle"
+    ])
+
+    with stats_tab1:
+        df_summary = schedule_summary(st.session_state.df_schedule, False)
+        st.dataframe(df_summary, hide_index=True, use_container_width=True)
+
+    with stats_tab2:
+        df_summary = schedule_summary(st.session_state.df_schedule, True)
+        st.dataframe(df_summary, hide_index=True, use_container_width=True)
+
+    with stats_tab3:
+        majorelle_sites = [key for key in config.keys() if key.startswith('majorelle_')]
+
+        if majorelle_sites:
+            friday_counts = {}
+            for site_key in majorelle_sites:
+                site_name = config[site_key]['name']
+                count = 0
+
+                for _, row in st.session_state.df_schedule.iterrows():
+                    try:
+                        date_str = str(row.iloc[0])
+                        if 'vendredi' in date_str.lower() or 'friday' in date_str.lower():
+                            is_friday = True
+                        else:
+                            try:
+                                from datetime import datetime
+                                for fmt in ['%Y-%m-%d', '%d/%m/%Y', '%d-%m-%Y']:
+                                    try:
+                                        date_obj = datetime.strptime(date_str.split()[0], fmt)
+                                        is_friday = date_obj.weekday() == 4
+                                        break
+                                    except:
+                                        continue
+                                else:
+                                    is_friday = False
+                            except:
+                                is_friday = False
+
+                        if is_friday:
+                            row_str = ' '.join(str(val) for val in row.values)
+                            if site_name in row_str:
+                                count += 1
+                    except:
+                        continue
+
+                friday_counts[site_name] = count
+
+            if friday_counts:
+                df_fridays = pd.DataFrame(
+                    list(friday_counts.items()),
+                    columns=['Site Majorelle', 'Nombre de vendredis']
+                )
+                df_fridays = df_fridays.sort_values('Site Majorelle')
+
+                def get_status(count):
+                    if count == 4:
+                        return "✅ Optimal"
+                    elif count in [3, 5]:
+                        return "⚠️ Acceptable"
+                    else:
+                        return "❌ À revoir"
+
+
+                df_fridays['Statut'] = df_fridays['Nombre de vendredis'].apply(get_status)
+
+                st.dataframe(df_fridays, hide_index=True, use_container_width=True)
+
+                problematic = (~df_fridays['Nombre de vendredis'].isin([3, 4, 5])).sum()
+
+                if problematic == 0:
+                    st.success("✅ Tous les sites Majorelle ont une allocation correcte de vendredis (3-5)")
+                else:
+                    st.warning(f"⚠️ {problematic} site(s) Majorelle ont une allocation incorrecte de vendredis")
+
+                st.info("💡 Objectif : 4 vendredis par site Majorelle, avec une flexibilité de 3-5 vendredis acceptée")
+            else:
+                st.info("Aucune donnée de vendredis trouvée pour les sites Majorelle")
+        else:
+            st.info("Aucun site Majorelle configuré")
 
     # Save schedule
     if st.button("💾 Sauvegarder"):
@@ -236,7 +316,7 @@ if show_tables and st.session_state.df_schedule is not None:
             selected_date
         )
 
-        # Synchroniser avec GitHub
+        # Synchronise with GitHub
         try:
             sync = GitHubSync()
             sync.push_csv()
