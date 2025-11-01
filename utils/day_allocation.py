@@ -149,7 +149,11 @@ class QuotaCalculator:
                 adjusted[site] += 1
 
         lost_slots = sum(adjusted.values()) - total_slots
-        non_pair_sites = [k for k in config if not config[k].get("pair_same_day", False)]
+        non_pair_sites = [site for site in config
+                          if not config[site].get("pair_same_day", False)
+                          and adjusted[site] % 2 == 0
+                          and not site.lower().startswith("majo")
+                          ]
 
         i = 0
         while lost_slots > 0 and non_pair_sites:
