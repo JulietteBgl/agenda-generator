@@ -1,6 +1,6 @@
 from collections import defaultdict
 from math import floor
-from typing import Dict, List, Tuple, Optional, Any
+from typing import Dict, List, Tuple, Optional
 from datetime import date
 
 
@@ -33,7 +33,8 @@ class MajorelleManager:
 
         return self.friday_allocation
 
-    def _split_fridays_into_periods(self, fridays: List[date]) -> List[List[date]]:
+    @staticmethod
+    def _split_fridays_into_periods(fridays: List[date]) -> List[List[date]]:
         period_size = len(fridays) // 4
         periods = []
 
@@ -227,8 +228,7 @@ class ConstraintValidator:
         swap_other_slot = 1 - swap_slot_idx
         swap_other_site = swap_day_schedule[swap_other_slot]
 
-        if not self._validate_site_on_day_by_key(site_to_place, swap_other_site,
-                                                 swap_day_schedule):
+        if not self._validate_site_on_day_by_key(site_to_place, swap_other_site):
             return False
 
         return True
@@ -254,8 +254,7 @@ class ConstraintValidator:
 
         return True
 
-    def _validate_site_on_day_by_key(self, site_key: str, other_site_name: str,
-                                     day_schedule: List[str]) -> bool:
+    def _validate_site_on_day_by_key(self, site_key: str, other_site_name: str) -> bool:
         site_name = self.config[site_key]['name']
 
         if self.config[site_key].get("pair_same_day", False):
@@ -329,9 +328,8 @@ class ScheduleAllocator:
 
             first_site, second_site = self._allocate_day(day, seq)
 
-            assignments = []
-            assignments.append(self.config[first_site]['name'] if first_site else None)
-            assignments.append(self.config[second_site]['name'] if second_site else None)
+            assignments = [self.config[first_site]['name'] if first_site else None,
+                           self.config[second_site]['name'] if second_site else None]
             self.schedule[day] = assignments
 
     def _allocate_day(self, day: date, seq: List[str]) -> Tuple[Optional[str], Optional[str]]:
