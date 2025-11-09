@@ -155,3 +155,14 @@ class MajorelleManager:
         current_count = self.get_friday_count(site)
         max_allowed = 5 if is_backfilling else 4
         return current_count < max_allowed
+
+    def get_future_friday_count(self, site: str, current_date: date, include_current: bool = False) -> int:
+        if site not in self.majorelle_sites or site not in self.friday_allocation:
+            return 0
+
+        future_fridays = [
+            friday for friday in self.friday_allocation[site]
+            if friday > current_date or (include_current and friday == current_date)
+        ]
+
+        return len(future_fridays)

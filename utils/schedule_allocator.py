@@ -98,6 +98,24 @@ class ScheduleAllocator:
             if is_friday and not self.majorelle_manager.can_place_on_friday(site):
                 continue
 
+            if site in self.majorelle_sites:
+                remaining_occurrences = seq.count(site)
+
+                if is_friday:
+                    if day in self.majorelle_manager.friday_allocation.get(site, []):
+                        # On peut le placer même s'il ne reste qu'1 slot
+                        pass
+                    else:
+                        future_fridays = self.majorelle_manager.get_future_friday_count(site, day, False)
+                        if remaining_occurrences <= future_fridays:
+                            continue
+                else:
+                    future_fridays = self.majorelle_manager.get_future_friday_count(site, day, False)
+                    if remaining_occurrences <= future_fridays:
+                        print(f"  ⚠️ {self.config[site]['name']}: {remaining_occurrences} slots restants "
+                              f"mais {future_fridays} vendredis futurs → réservation")
+                        continue
+
             if self.availability_checker.is_available(site, day):
                 return site, i
 
@@ -117,6 +135,21 @@ class ScheduleAllocator:
             for i, site in enumerate(seq):
                 if is_friday and not self.majorelle_manager.can_place_on_friday(site):
                     continue
+
+                if site in self.majorelle_sites:
+                    remaining_occurrences = seq.count(site)
+
+                    if is_friday:
+                        if day in self.majorelle_manager.friday_allocation.get(site, []):
+                            pass
+                        else:
+                            future_fridays = self.majorelle_manager.get_future_friday_count(site, day, False)
+                            if remaining_occurrences <= future_fridays:
+                                continue
+                    else:
+                        future_fridays = self.majorelle_manager.get_future_friday_count(site, day, False)
+                        if remaining_occurrences <= future_fridays:
+                            continue
 
                 if (self.constraint_validator.validate_second_site(first_site, site) and
                         self.availability_checker.is_available(site, day)):
