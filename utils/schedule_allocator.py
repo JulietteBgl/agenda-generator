@@ -1,6 +1,5 @@
 from collections import defaultdict
 from datetime import date
-from math import floor
 from typing import Dict, List, Optional, Tuple
 
 from utils.availability_checker import SiteAvailabilityChecker
@@ -133,8 +132,8 @@ class ScheduleAllocator:
         return self.schedule
 
     def _calculate_quotas(self) -> Dict[str, int]:
-        quotas = QuotaCalculator.calculate_quotas(self.config, self.total_slots)
-        quotas = QuotaCalculator.adjust_for_paired_sites(quotas, self.config,
+        quotas = SequenceGenerator.calculate_quotas(self.config, self.total_slots)
+        quotas = SequenceGenerator.adjust_for_paired_sites(quotas, self.config,
                                                          self.total_slots)
         return quotas
 
@@ -511,57 +510,3 @@ class ScheduleAllocator:
             else:
                 status = "✗ Hors limites"
             print(f"{self.config[site]['name']}: {count} vendredis {status}")
-
-
-class QuotaCalculator:
-    """Compute quotas for each sites depending on their weight"""
-
-    @staticmethod
-    def calculate_quotas(config: Dict, total_slots: int) -> Dict[str, int]:
-        """Compute quotas with the Largest Remainder Method"""
-        weights = {k: max(0, int(v.get('nb_radiologists', 0))) for k, v in config.items()}
-        total_w = sum(weights.values())
-
-        if total_w == 0:
-            return {}
-
-        raw = {k: weights[k] / total_w * total_slots for k in config}
-        base = {k: floor(raw[k]) for k in config}
-        remainder = total_slots - sum(base.values())
-
-        for k, _ in sorted(((k, raw[k] - base[k]) for k in config),
-                           key=lambda x: (-x[1], x[0])):
-            if remainder <= 0:
-                break
-            base[k] += 1
-            remainder -= 1
-
-        return base
-
-    @staticmethod
-    def adjust_for_paired_sites(quotas: Dict[str, int], config: Dict,
-                                total_slots: int) -> Dict[str, int]:
-        adjusted = quotas.copy()
-        list_paired_sites = [site for site in config if config[site]['pair_same_day']]
-
-        for site in list_paired_sites:
-            if adjusted[site] % 2 == 1:
-                adjusted[site] += 1
-
-        lost_slots = sum(adjusted.values()) - total_slots
-        non_pair_sites = [site for site in config
-                          if not config[site].get("pair_same_day", False)
-                          and adjusted[site] % 2 == 0
-                          and not site.lower().startswith("majo")
-                          ]
-
-        i = 0
-        while lost_slots > 0 and non_pair_sites:
-            if adjusted[non_pair_sites[i % len(non_pair_sites)]] > 1:
-                adjusted[non_pair_sites[i % len(non_pair_sites)]] -= 1
-                lost_slots -= 1
-            i += 1
-            if i > len(non_pair_sites) * 10:
-                break
-
-        return adjusted
