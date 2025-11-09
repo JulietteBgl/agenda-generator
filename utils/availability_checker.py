@@ -20,9 +20,3 @@ class SiteAvailabilityChecker:
         holidays = cfg.get('holidays', [])
 
         return weekday in available_weekdays and day_str not in holidays
-
-    def get_site_key_from_name(self, site_name: str) -> Optional[str]:
-        for key, cfg in self.config.items():
-            if cfg['name'] == site_name:
-                return key
-        return None

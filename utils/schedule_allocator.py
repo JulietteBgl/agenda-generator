@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 from utils.availability_checker import SiteAvailabilityChecker
 from utils.generate_sequence import SequenceGenerator
 from utils.majorelle_manager import MajorelleManager
+from utils.tools import get_site_key_from_name
 
 
 class ConstraintValidator:
@@ -271,7 +272,7 @@ class ScheduleAllocator:
                 if site_name_to_swap is None:
                     continue
 
-                site_key_to_swap = self.availability_checker.get_site_key_from_name(site_name_to_swap)
+                site_key_to_swap = get_site_key_from_name(self.config, site_name_to_swap)
                 if site_key_to_swap is None:
                     continue
 

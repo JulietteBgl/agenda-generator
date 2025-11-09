@@ -1,12 +1,13 @@
 import streamlit as st
 from dateutil.relativedelta import relativedelta as rd
 from datetime import date
+
+from utils.schedule_allocator import ScheduleAllocator
 from utils.storage_csv import ScheduleStorage
 from utils.github_sync import GitHubSync
 
 from utils.create_calendar import create_calendar_editor, create_visual_calendar, get_start_date, \
     create_date_dropdown_list
-from utils.day_allocation import allocate_days
 from utils.tools import (
     load_config, get_working_days,
     schedule_to_dataframe, daterange, schedule_summary
@@ -179,7 +180,7 @@ if st.button("Générer le planning"):
     else:
         working_days, public_holidays = get_working_days(selected_date, end_date)
 
-        schedule_full = allocate_days(config, working_days)
+        schedule_full = ScheduleAllocator(config, working_days).allocate()
 
         st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
         st.session_state.generated_for = st.session_state.selected_date

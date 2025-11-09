@@ -15,6 +15,13 @@ def daterange(start_date, end_date):
         yield start_date + datetime.timedelta(n)
 
 
+def get_site_key_from_name(config, site_name):
+    for key, cfg in config.items():
+        if cfg['name'] == site_name:
+            return key
+    return None
+
+
 def get_working_days(start_date, end_date, country='FR'):
     fr_holidays = holidays.country_holidays(country)
     working_days, holiday_days = [], []
