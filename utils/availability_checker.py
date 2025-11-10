@@ -11,7 +11,7 @@ class SiteAvailabilityChecker:
     def is_available(self, site_key: str, day: date) -> bool:
         cfg = self.config[site_key]
 
-        if not cfg.get("advanced_split"):
+        if not cfg.get("available_weekdays", []):
             return True
 
         weekday = day.weekday()

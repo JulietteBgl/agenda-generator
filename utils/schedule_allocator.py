@@ -212,7 +212,7 @@ class ScheduleAllocator:
     def _find_swap_for_backfilling(self, site_to_place: str, problem_day: date,
                                    slot_idx: int, seq: List[str]) -> bool:
         for swap_day in self.working_days:
-            if swap_day >= problem_day:
+            if swap_day >= problem_day or self._day_contains_paired_site(swap_day):
                 continue
 
             for swap_slot_idx in range(len(self.schedule[swap_day])):
@@ -232,6 +232,18 @@ class ScheduleAllocator:
                                        slot_idx, swap_slot_idx, seq)
                     return True
 
+        return False
+
+    def _day_contains_paired_site(self, day: date) -> bool:
+        """
+        Vérifie si un jour contient un site avec pair_same_day=True
+        """
+        day_schedule = self.schedule[day]
+        for site_name in day_schedule:
+            if site_name:
+                site_key = get_site_key_from_name(self.config, site_name)
+                if site_key and self.config[site_key].get("pair_same_day", False):
+                    return True
         return False
 
     def _validate_backfilling_swap(self, site_to_place: str, site_to_swap: str,

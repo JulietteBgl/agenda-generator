@@ -29,6 +29,7 @@ radiolor:
   name: 'Radiolor'
   advanced_split: False
   nb_radiologists: 2
+  available_weekdays: [0, 1, 3, 4]
   pair_same_day: True
 
 stdizier:
