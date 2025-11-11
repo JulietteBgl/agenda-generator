@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List, Dict, Optional
 
-from model.constraints_validator import ConstraintValidator
+from model.validator import ScheduleValidator
 
 
 class MajorelleManager:
@@ -12,7 +12,7 @@ class MajorelleManager:
         self.config = config
         self.friday_allocation = {}
         self.friday_used = {site: 0 for site in majorelle_sites}
-        self.constraints_validator = ConstraintValidator(config)
+        self.constraints_validator = ScheduleValidator(config)
 
     def allocate_fridays(self, working_days: List[date]) -> Dict[str, List[date]]:
         """

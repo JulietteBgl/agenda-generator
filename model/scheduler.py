@@ -2,9 +2,9 @@ from collections import defaultdict
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
-from model.constraints_validator import ConstraintValidator
-from model.generate_sequence import SequenceGenerator
-from model.majorelle_manager import MajorelleManager
+from model.validator import ScheduleValidator
+from model.sequence import SequenceGenerator
+from model.majorelle import MajorelleManager
 from utils.tools import get_site_key_from_name
 
 
@@ -19,7 +19,7 @@ class ScheduleAllocator:
 
         self.majorelle_sites = [k for k in config if k.startswith('majorelle_')]
         self.majorelle_manager = MajorelleManager(self.majorelle_sites, config)
-        self.constraint_validator = ConstraintValidator(config)
+        self.constraint_validator = ScheduleValidator(config)
 
     def allocate(self) -> Dict[date, List[str]]:
         print('Total slots to allocate:', self.total_slots)

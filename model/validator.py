@@ -3,12 +3,12 @@ from datetime import date
 from utils.tools import get_site_key_from_name
 
 
-class ConstraintValidator:
+class ScheduleValidator:
     """Validate constraints"""
 
     def __init__(self, config: Dict):
         self.config = config
-        self.list_paired_sites = [site for site in config if config[site]['pair_same_day']]
+        self.paired_sites = [site for site in config if config[site]['pair_same_day']]
 
     def is_available(self, site_key: str, day: date) -> bool:
         """Check sites availability"""
@@ -35,7 +35,7 @@ class ConstraintValidator:
             return False
         if second_site[:9] == first_site[:9]:
             return False
-        if second_site in self.list_paired_sites:
+        if second_site in self.paired_sites:
             return False
 
         return True

@@ -2,8 +2,8 @@ import streamlit as st
 from dateutil.relativedelta import relativedelta as rd
 from datetime import date
 
-from model.schedule_allocator import ScheduleAllocator
-from utils.storage.storage_csv import ScheduleStorage
+from model.scheduler import ScheduleAllocator
+from utils.storage.storage import ScheduleStorage
 from utils.storage.github_sync import GitHubSync
 
 from utils.create_calendar import create_calendar_editor, create_visual_calendar, get_start_date, \

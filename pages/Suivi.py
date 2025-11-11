@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import datetime
 
-from utils.storage.export_agenda import create_excel_export
-from utils.storage.storage_csv import ScheduleStorage
+from utils.storage.storage import ScheduleStorage
 from utils.storage.github_sync import GitHubSync
 
 # Configuration de la page
@@ -103,7 +102,7 @@ else:
             if years:
                 export_year = years[0]
 
-            excel_data = create_excel_export(storage, export_year)
+            excel_data = storage.export_to_excel(export_year)
             st.download_button(
                 label="📥 Télécharger Excel",
                 data=excel_data,
