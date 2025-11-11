@@ -4,14 +4,14 @@ from io import BytesIO
 
 def create_excel_export(storage, year):
     """
-    Create an excel file with one tab per semester along with one total tab
+    Create an Excel file with one tab per semester along with one total tab
 
     Args:
         storage: ScheduleStorage instance
         year: Year to export
 
     Returns:
-        BytesIO: Exvel file in memory
+        BytesIO: Excel file in memory
     """
     buffer = BytesIO()
 
@@ -116,7 +116,7 @@ def create_excel_export(storage, year):
         # Create the total tab
         if all_stats_for_total:
             df_total = pd.concat(all_stats_for_total, axis=1)
-            df_total = df_total.groupby(level=0, axis=1).sum()
+            df_total = df_total.T.groupby(level=0).sum().T
 
             if 'Total' in df_total.columns:
                 df_total = df_total.drop('Total', axis=1)

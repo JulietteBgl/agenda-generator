@@ -1,5 +1,5 @@
 .idea/
-*/__pycache__/*
+**/__pycache__/
 
 # virtual env
 .venv
@@ -8,4 +8,4 @@
 .streamlit/secrets.toml
 
 # saved schedules
-data/
+output/

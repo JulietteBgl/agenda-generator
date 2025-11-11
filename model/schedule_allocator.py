@@ -2,10 +2,9 @@ from collections import defaultdict
 from datetime import date
 from typing import Dict, List, Optional, Tuple
 
-from utils.availability_checker import SiteAvailabilityChecker
-from utils.contraints_validator import ConstraintValidator
-from utils.generate_sequence import SequenceGenerator
-from utils.majorelle_manager import MajorelleManager
+from model.constraints_validator import ConstraintValidator
+from model.generate_sequence import SequenceGenerator
+from model.majorelle_manager import MajorelleManager
 from utils.tools import get_site_key_from_name
 
 
@@ -20,7 +19,6 @@ class ScheduleAllocator:
 
         self.majorelle_sites = [k for k in config if k.startswith('majorelle_')]
         self.majorelle_manager = MajorelleManager(self.majorelle_sites, config)
-        self.availability_checker = SiteAvailabilityChecker(config)
         self.constraint_validator = ConstraintValidator(config)
 
     def allocate(self) -> Dict[date, List[str]]:
@@ -116,14 +114,13 @@ class ScheduleAllocator:
                               f"mais {future_fridays} vendredis futurs → réservation")
                         continue
 
-            if self.availability_checker.is_available(site, day):
+            if self.constraint_validator.is_available(site, day):
                 return site, i
 
         return None, None
 
     def _find_second_site(self, first_site: str, day: date,
                           seq: List[str], is_friday: bool) -> Optional[str]:
-        """Trouve le second site à placer"""
         if self.config[first_site].get("pair_same_day", False):
             for i, site in enumerate(seq):
                 if site == first_site:
@@ -152,7 +149,7 @@ class ScheduleAllocator:
                             continue
 
                 if (self.constraint_validator.validate_second_site(first_site, site) and
-                        self.availability_checker.is_available(site, day)):
+                        self.constraint_validator.is_available(site, day)):
 
                     if is_friday and site in self.majorelle_sites:
                         self.majorelle_manager.increment_friday_count(site)
@@ -235,9 +232,6 @@ class ScheduleAllocator:
         return False
 
     def _day_contains_paired_site(self, day: date) -> bool:
-        """
-        Vérifie si un jour contient un site avec pair_same_day=True
-        """
         day_schedule = self.schedule[day]
         for site_name in day_schedule:
             if site_name:
@@ -250,9 +244,9 @@ class ScheduleAllocator:
                                    problem_day: date, swap_day: date,
                                    slot_idx: int, swap_slot_idx: int) -> bool:
 
-        if not self.availability_checker.is_available(site_to_swap, problem_day):
+        if not self.constraint_validator.is_available(site_to_swap, problem_day):
             return False
-        if not self.availability_checker.is_available(site_to_place, swap_day):
+        if not self.constraint_validator.is_available(site_to_place, swap_day):
             return False
 
 
@@ -412,9 +406,9 @@ class ScheduleAllocator:
     def _validate_rebalance_exchange(self, receiver_site: str, donor_site: str,
                                      friday: date, swap_day: date,
                                      donor_slot: int, receiver_slot: int) -> bool:
-        if not self.availability_checker.is_available(receiver_site, friday):
+        if not self.constraint_validator.is_available(receiver_site, friday):
             return False
-        if not self.availability_checker.is_available(donor_site, swap_day):
+        if not self.constraint_validator.is_available(donor_site, swap_day):
             return False
 
         return self.constraint_validator.validate_swap(

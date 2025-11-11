@@ -6,7 +6,7 @@ from typing import Optional, Dict, List
 
 class ScheduleStorage:
 
-    def __init__(self, csv_path: str = "data/planning_all.csv"):
+    def __init__(self, csv_path: str = "output/planning_all.csv"):
         self.csv_path = Path(csv_path)
         self.csv_path.parent.mkdir(parents=True, exist_ok=True)
         if not self.csv_path.exists():

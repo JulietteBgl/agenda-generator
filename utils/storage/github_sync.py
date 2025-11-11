@@ -26,7 +26,7 @@ class GitHubSync:
 
     def push_csv(
         self,
-        csv_path: str = "data/planning_all.csv",
+        csv_path: str = "output/planning_all.csv",
         commit_message: str = None
     ) -> bool:
         """
@@ -77,10 +77,10 @@ class GitHubSync:
             return True
 
         except Exception as e:
-            st.error(f"❌ Erreur lors du push GitHub: {e}")
+            st.error(f"Error during the Github push: {e}")
             return False
 
-    def get_last_commit_info(self, file_path: str = "data/planning_all.csv") -> dict:
+    def get_last_commit_info(self, file_path: str = "output/planning_all.csv") -> dict:
         """
         Retrieve the latest commit information for the CSV file
         """

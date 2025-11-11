@@ -3,6 +3,7 @@ import datetime
 import pandas as pd
 import holidays
 from collections import Counter
+from typing import Optional
 
 
 def load_config(yaml_path):
@@ -15,7 +16,7 @@ def daterange(start_date, end_date):
         yield start_date + datetime.timedelta(n)
 
 
-def get_site_key_from_name(config, site_name):
+def get_site_key_from_name(config: dict, site_name: str) -> Optional[str]:
     for key, cfg in config.items():
         if cfg['name'] == site_name:
             return key

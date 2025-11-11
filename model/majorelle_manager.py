@@ -1,7 +1,7 @@
 from datetime import date
 from typing import List, Dict, Optional
 
-from utils.availability_checker import SiteAvailabilityChecker
+from model.constraints_validator import ConstraintValidator
 
 
 class MajorelleManager:
@@ -12,7 +12,7 @@ class MajorelleManager:
         self.config = config
         self.friday_allocation = {}
         self.friday_used = {site: 0 for site in majorelle_sites}
-        self.availability_checker = SiteAvailabilityChecker(config)
+        self.constraints_validator = ConstraintValidator(config)
 
     def allocate_fridays(self, working_days: List[date]) -> Dict[str, List[date]]:
         """
@@ -29,7 +29,7 @@ class MajorelleManager:
         for site in self.majorelle_sites:
             site_available_fridays[site] = [
                 friday for friday in fridays
-                if self.availability_checker.is_available(site, friday)
+                if self.constraints_validator.is_available(site, friday)
             ]
 
             if len(site_available_fridays[site]) < 4:
@@ -131,7 +131,7 @@ class MajorelleManager:
             if site in self.friday_allocation and day in self.friday_allocation[site]:
                 if self.friday_used[site] < 4:
                     # Double-check availability in case config changed
-                    if self.availability_checker.is_available(site, day):
+                    if self.constraints_validator.is_available(site, day):
                         return site
                     else:
                         print(f"Warning: {self.config[site]['name']} was allocated to "

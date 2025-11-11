@@ -1,4 +1,6 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
+from datetime import date
+from utils.tools import get_site_key_from_name
 
 
 class ConstraintValidator:
@@ -7,6 +9,20 @@ class ConstraintValidator:
     def __init__(self, config: Dict):
         self.config = config
         self.list_paired_sites = [site for site in config if config[site]['pair_same_day']]
+
+    def is_available(self, site_key: str, day: date) -> bool:
+        """Check sites availability"""
+        cfg = self.config[site_key]
+
+        if not cfg.get("available_weekdays", []):
+            return True
+
+        weekday = day.weekday()
+        available_weekdays = cfg.get('available_weekdays', list(range(5)))
+        day_str = day.strftime("%Y-%m-%d")
+        holidays = cfg.get('holidays', [])
+
+        return weekday in available_weekdays and day_str not in holidays
 
     def validate_second_site(self, first_site: str, second_site: str) -> bool:
         if not second_site or not first_site:
@@ -45,7 +61,7 @@ class ConstraintValidator:
 
     def _validate_site_on_day(self, site_name: str, other_site_name: str,
                               day_schedule: List[str]) -> bool:
-        site_key = self._get_site_key_from_name(site_name)
+        site_key = get_site_key_from_name(self.config, site_name)
         if not site_key:
             return False
 
@@ -58,7 +74,7 @@ class ConstraintValidator:
         else:
             if other_site_name == site_name:
                 return False
-            other_site_key = self._get_site_key_from_name(other_site_name) if other_site_name else None
+            other_site_key = get_site_key_from_name(self.config, other_site_name) if other_site_name else None
             if other_site_key and site_key[:9] == other_site_key[:9]:
                 return False
 
@@ -73,14 +89,8 @@ class ConstraintValidator:
         else:
             if other_site_name == site_name:
                 return False
-            other_site_key = self._get_site_key_from_name(other_site_name) if other_site_name else None
+            other_site_key = get_site_key_from_name(self.config, other_site_name) if other_site_name else None
             if other_site_key and site_key[:9] == other_site_key[:9]:
                 return False
 
         return True
-
-    def _get_site_key_from_name(self, site_name: str) -> Optional[str]:
-        for key, cfg in self.config.items():
-            if cfg['name'] == site_name:
-                return key
-        return None
