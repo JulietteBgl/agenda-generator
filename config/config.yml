@@ -22,7 +22,7 @@ majorelle_mb:
 icl:
   name: 'ICL'
   advanced_split: False
-  nb_radiologists: 3
+  nb_radiologists: 2
   pair_same_day: False
 
 radiolor:
@@ -35,7 +35,7 @@ radiolor:
 stdizier:
   name: 'St Dizier'
   advanced_split: False
-  nb_radiologists: 4
+  nb_radiologists: 5
   pair_same_day: False
 
 jung:
