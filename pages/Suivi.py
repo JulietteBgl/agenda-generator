@@ -39,7 +39,7 @@ else:
         })
 
     df_schedules = pd.DataFrame(schedules_list)
-    st.dataframe(df_schedules, use_container_width=True, hide_index=True)
+    st.dataframe(df_schedules, width='stretch', hide_index=True)
 
     st.markdown("## Actions")
 
@@ -51,11 +51,11 @@ else:
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button("👁️ Visualiser", use_container_width=True):
+        if st.button("👁️ Visualiser", width='stretch'):
             st.session_state['show_visualization'] = selected_schedule
 
     with col2:
-        if st.button("🗑️ Supprimer", type="secondary", use_container_width=True):
+        if st.button("🗑️ Supprimer", type="secondary", width='stretch'):
             if st.session_state.get('confirm_delete') == selected_schedule:
                 storage.delete(selected_schedule)
 
@@ -81,7 +81,7 @@ else:
         df = storage.load(schedule_to_show)
         if df is not None:
             st.markdown(f"### Visualisation : {schedule_to_show}")
-            st.dataframe(df, use_container_width=True, hide_index=True)
+            st.dataframe(df, width='stretch', hide_index=True)
         else:
             st.error("Impossible de charger ce planning")
 
@@ -149,7 +149,7 @@ else:
             tab1, tab2 = st.tabs(["📊 Détaillé", "📊 Simplifié (Majo)"])
 
             with tab1:
-                st.dataframe(df_stats, use_container_width=True)
+                st.dataframe(df_stats, width='stretch')
 
             with tab2:
 
@@ -168,7 +168,7 @@ else:
 
                     df_stats_simplified = df_stats_simplified.sort_values('Total', ascending=False)
 
-                st.dataframe(df_stats_simplified, use_container_width=True)
+                st.dataframe(df_stats_simplified, width='stretch')
         else:
             st.warning("Aucune donnée disponible pour générer des statistiques")
     else:

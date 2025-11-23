@@ -5,7 +5,7 @@ from datetime import datetime
 
 
 def continuous_week(date_obj):
-    iso_year, iso_week, iso_weekday = date_obj.isocalendar()
+    _, iso_week, _ = date_obj.isocalendar()
 
     if date_obj.month == 12 and iso_week == 1:
         return 53
@@ -130,7 +130,7 @@ def create_calendar_editor(source, simplified=False):
     edited_df = dynamic_input_data_editor(
         df,
         column_config=column_config,
-        use_container_width=True,
+        width='stretch',
         num_rows="dynamic",
         key=f"editor_{simplified}",
     )

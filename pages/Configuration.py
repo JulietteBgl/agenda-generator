@@ -240,6 +240,6 @@ for site_key, site_config in st.session_state.config_modified.items():
 import pandas as pd
 if summary_data:
     df_summary = pd.DataFrame(summary_data)
-    st.dataframe(df_summary, use_container_width=True, hide_index=True)
+    st.dataframe(df_summary, width='stretch', hide_index=True)
 else:
     st.info("Aucun site configuré")

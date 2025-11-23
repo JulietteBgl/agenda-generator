@@ -233,11 +233,11 @@ if show_tables and st.session_state.df_schedule is not None:
 
     with stats_tab1:
         df_summary = schedule_summary(st.session_state.df_schedule, False)
-        st.dataframe(df_summary, hide_index=True, use_container_width=True)
+        st.dataframe(df_summary, hide_index=True, width='stretch')
 
     with stats_tab2:
         df_summary = schedule_summary(st.session_state.df_schedule, True)
-        st.dataframe(df_summary, hide_index=True, use_container_width=True)
+        st.dataframe(df_summary, hide_index=True, width='stretch')
 
     with stats_tab3:
         majorelle_sites = [key for key in config.keys() if key.startswith('majorelle_')]
@@ -295,7 +295,7 @@ if show_tables and st.session_state.df_schedule is not None:
 
                 df_fridays['Statut'] = df_fridays['Nombre de vendredis'].apply(get_status)
 
-                st.dataframe(df_fridays, hide_index=True, use_container_width=True)
+                st.dataframe(df_fridays, hide_index=True, width='stretch')
 
                 problematic = (~df_fridays['Nombre de vendredis'].isin([3, 4, 5])).sum()
 
