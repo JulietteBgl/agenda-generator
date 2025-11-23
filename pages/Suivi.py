@@ -61,7 +61,7 @@ else:
 
                 # Sync avec GitHub
                 sync = GitHubSync()
-                sync.push_csv(commit_message=f"Delete planning {selected_schedule}")
+                sync.push_file(commit_message=f"Delete planning {selected_schedule}")
 
                 st.session_state['delete_success'] = f"Planning {selected_schedule} supprimé"
                 del st.session_state['confirm_delete']

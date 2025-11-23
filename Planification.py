@@ -320,7 +320,7 @@ if show_tables and st.session_state.df_schedule is not None:
         # Synchronise with GitHub
         try:
             sync = GitHubSync()
-            sync.push_csv()
+            sync.push_file()
             st.success(f"✅ Planning saved: {schedule_id}")
         except Exception as e:
             st.warning(f"⚠️ Error during sync: {e}")

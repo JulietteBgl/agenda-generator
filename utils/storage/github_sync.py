@@ -24,34 +24,34 @@ class GitHubSync:
         except Exception:
             pass
 
-    def push_csv(
+    def push_file(
         self,
-        csv_path: str = "output/planning_all.csv",
+        file_path: str = "output/planning_all.csv",
         commit_message: str = None
     ) -> bool:
         """
-        Push the CSV file to GitHub
+        Push any file to GitHub (CSV, YAML, etc.)
 
         Args:
-            csv_path: Path to the CSV file
+            file_path: Path to the file to push
             commit_message: Commit message (auto-generated if None)
         """
         if not self.enabled:
             return False
 
-        file_path = Path(csv_path)
-        if not file_path.exists():
-            st.error(f"❌ Not found: {csv_path}")
+        path_obj = Path(file_path)
+        if not path_obj.exists():
+            st.error(f"❌ File not found: {file_path}")
             return False
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(path_obj, 'r', encoding='utf-8') as f:
                 content = f.read()
 
             if commit_message is None:
-                commit_message = f"Update planning CSV - {time.strftime('%Y-%m-%d %H:%M:%S')}"
+                commit_message = f"Update file - {time.strftime('%Y-%m-%d %H:%M:%S')}"
 
-            github_path = str(file_path)
+            github_path = str(path_obj)
 
             try:
                 contents = self.repo.get_contents(github_path)
@@ -82,7 +82,7 @@ class GitHubSync:
 
     def get_last_commit_info(self, file_path: str = "output/planning_all.csv") -> dict:
         """
-        Retrieve the latest commit information for the CSV file
+        Retrieve the latest commit information for the specified file
         """
         if not self.enabled:
             return {}
