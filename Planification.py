@@ -174,22 +174,85 @@ for key in ["df_schedule", "df_schedule_simple"]:
     if key not in st.session_state:
         st.session_state[key] = None
 
-if st.button("Générer le planning"):
-    if selected_date > end_date:
-        st.error("La date de début doit être avant la date de fin.")
+# Action buttons
+st.markdown("### 📋 Action à effectuer")
+col1, col2 = st.columns(2)
+
+# Store generation results to display messages outside columns
+generation_success = False
+generation_working_days = 0
+generation_public_holidays = []
+
+with col1:
+    if st.button("🎯 Générer le planning", type="primary"):
+        if selected_date > end_date:
+            st.error("La date de début doit être avant la date de fin.")
+        else:
+            working_days, public_holidays = get_working_days(selected_date, end_date)
+
+            schedule_full = ScheduleAllocator(config, working_days).allocate()
+
+            st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
+            st.session_state.generated_for = st.session_state.selected_date
+            
+            # Store results for display outside columns
+            generation_success = True
+            generation_working_days = len(working_days)
+            generation_public_holidays = public_holidays
+
+with col2:
+    # Get all saved schedules to check if any exist
+    all_schedules = storage.get_all()
+    
+    # Generate the expected schedule ID for the selected quarter
+    year = selected_date.year
+    quarter = (selected_date.month - 1) // 3 + 1
+    expected_schedule_id = f"T{quarter}_{year}"
+    
+    if expected_schedule_id not in all_schedules:
+        st.button("📂 Utiliser un planning existant", disabled=True, help=f"Aucun planning sauvegardé pour T{quarter} {year}")
     else:
-        working_days, public_holidays = get_working_days(selected_date, end_date)
+        # Show save date in button help
+        saved_date = all_schedules[expected_schedule_id]['saved_at'][:10]
+        if st.button("📂 Utiliser un planning existant", help=f"Planning T{quarter} {year} (sauvegardé le {saved_date})"):
+            # Trigger automatic loading
+            st.session_state.show_schedule_selector = True
 
-        schedule_full = ScheduleAllocator(config, working_days).allocate()
+# Handle automatic schedule loading when button is clicked
+if hasattr(st.session_state, 'show_schedule_selector') and st.session_state.show_schedule_selector:
+    # Generate the expected schedule ID based on selected quarter
+    year = selected_date.year
+    quarter = (selected_date.month - 1) // 3 + 1
+    expected_schedule_id = f"T{quarter}_{year}"
+    
+    # Try to load the matching schedule
+    if expected_schedule_id in all_schedules:
+        loaded_schedule = storage.load(expected_schedule_id)
+        
+        if loaded_schedule is not None:
+            st.session_state.df_schedule = loaded_schedule
+            st.session_state.generated_for = st.session_state.selected_date
+            st.session_state.show_schedule_selector = False  # Hide selector after loading
+            
+            # Get save date for display
+            saved_date = all_schedules[expected_schedule_id]['saved_at'][:10]
+            st.success(f"✅ Planning T{quarter} {year} chargé avec succès! (sauvegardé le {saved_date})")
+            st.info(f"📊 {len(loaded_schedule)} lignes chargées")
+            st.rerun()
+        else:
+            st.error(f"❌ Erreur lors du chargement du planning T{quarter} {year}")
+            st.session_state.show_schedule_selector = False
+    else:
+        st.error(f"❌ Aucun planning sauvegardé trouvé pour T{quarter} {year}")
+        st.session_state.show_schedule_selector = False
 
-        st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
-        st.session_state.generated_for = st.session_state.selected_date
-
-        st.success(f"Planning généré pour {len(working_days)} jours ouvrés.")
-        if public_holidays:
-            st.info(f"{len(public_holidays)} jour(s) férié(s) ignoré(s) : " + ", ".join(
-                [f"{d.strftime('%d/%m')} ({n})" for d, n in public_holidays]
-            ))
+# Display generation messages across full width
+if generation_success:
+    st.success(f"Planning généré pour {generation_working_days} jours ouvrés.")
+    if generation_public_holidays:
+        st.info(f"{len(generation_public_holidays)} jour(s) férié(s) ignoré(s) : " + ", ".join(
+            [f"{d.strftime('%d/%m')} ({n})" for d, n in generation_public_holidays]
+        ))
 
 # On n'affiche les plannings que si la date actuelle == celle pour laquelle on a généré le planning.
 show_tables = (
