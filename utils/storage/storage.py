@@ -103,14 +103,38 @@ class ScheduleStorage:
         pivot = pivot.sort_values("Total", ascending=False)
         return pivot
 
+    def _get_statistics_grouped_majo(self, schedule_ids: Optional[List[str]] = None) -> pd.DataFrame:
+        """Compute affectation stats with all Majo-xxx sites grouped as 'Majo'"""
+        df = pd.read_csv(self.csv_path)
+        if schedule_ids:
+            df = df[df["schedule_id"].isin(schedule_ids)]
+
+        for col in ['affectation_1', 'affectation_2']:
+            df[col] = df[col].apply(
+                lambda x: 'Majo' if pd.notna(x) and str(x).startswith('Majo') else x
+            )
+
+        affectations = pd.concat([
+            df[["schedule_id", "affectation_1"]].rename(columns={"affectation_1": "site_name"}),
+            df[["schedule_id", "affectation_2"]].rename(columns={"affectation_2": "site_name"})
+        ])
+        affectations = affectations.dropna()
+
+        stats = affectations.value_counts().reset_index(name="count")
+        pivot = stats.pivot(index="site_name", columns="schedule_id", values="count").fillna(0).astype(int)
+        pivot["Total"] = pivot.sum(axis=1)
+        pivot = pivot.sort_values("Total", ascending=False)
+        return pivot
+
     #create_excel_export
 
-    def export_to_excel(self, year: int)-> BytesIO:
+    def export_to_excel(self, year: int, grouped_majo: bool = False) -> BytesIO:
         """
         Create an Excel file with one tab per semester along with one total tab
 
         Args:
             year: Year to export
+            grouped_majo: If True, all 'Majo - xxx' sites are replaced by 'Majo'
 
         Returns:
             BytesIO: Excel file in memory
@@ -163,6 +187,12 @@ class ScheduleStorage:
                     writer.sheets[sheet_name] = worksheet
 
                     df = df_planning.copy()
+
+                    if grouped_majo:
+                        for col in ['Affectation 1', 'Affectation 2']:
+                            df[col] = df[col].apply(
+                                lambda x: 'Majo' if pd.notna(x) and str(x).startswith('Majo') else x
+                            )
                     df['Date'] = pd.to_datetime(df['Date'])
                     df['DayOfWeek'] = df['Date'].dt.dayofweek
                     df['WeekNumber'] = df['Date'].dt.isocalendar().week
@@ -211,7 +241,10 @@ class ScheduleStorage:
 
                         row += 1
 
-                    stats = self.get_statistics([schedule_id])
+                    if grouped_majo:
+                        stats = self._get_statistics_grouped_majo([schedule_id])
+                    else:
+                        stats = self.get_statistics([schedule_id])
                     if not stats.empty:
                         all_stats_for_total.append(stats)
 
@@ -225,19 +258,23 @@ class ScheduleStorage:
                 df_total['Total'] = df_total.sum(axis=1)
                 df_total = df_total.sort_values('Total', ascending=False)
 
-                df_total_simplified = df_total.copy()
-                majo_rows = df_total_simplified.index.str.startswith('Majo')
+                if not grouped_majo:
+                    # Only re-group Majo rows when not already grouped
+                    df_total_simplified = df_total.copy()
+                    majo_rows = df_total_simplified.index.str.startswith('Majo')
 
-                if majo_rows.any():
-                    majo_data = df_total_simplified[majo_rows]
-                    df_total_simplified = df_total_simplified[~majo_rows]
-                    majo_sum = majo_data.sum()
-                    majo_sum.name = 'Majo'
-                    df_total_simplified = pd.concat([
-                        df_total_simplified,
-                        pd.DataFrame([majo_sum])
-                    ])
-                    df_total_simplified = df_total_simplified.sort_values('Total', ascending=False)
+                    if majo_rows.any():
+                        majo_data = df_total_simplified[majo_rows]
+                        df_total_simplified = df_total_simplified[~majo_rows]
+                        majo_sum = majo_data.sum()
+                        majo_sum.name = 'Majo'
+                        df_total_simplified = pd.concat([
+                            df_total_simplified,
+                            pd.DataFrame([majo_sum])
+                        ])
+                        df_total_simplified = df_total_simplified.sort_values('Total', ascending=False)
+                else:
+                    df_total_simplified = df_total
 
                 df_total_simplified.to_excel(writer, sheet_name='Total')
 

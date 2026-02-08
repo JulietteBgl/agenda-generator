@@ -87,27 +87,10 @@ else:
 
     # ===== STATISTIQUES =====
     st.markdown("---")
-    col_title, col_export = st.columns([3, 1])
+    st.markdown("## 📈 Statistiques d'affectation")
 
     years = sorted(list(set([meta['year'] for meta in all_schedules.values()])), reverse=True)
     current_year = datetime.now().year
-
-
-    with col_title:
-        st.markdown("## 📈 Statistiques d'affectation")
-
-    with col_export:
-        if all_schedules:
-            export_year = datetime.now().year
-            if years:
-                export_year = years[0]
-
-            excel_data = storage.export_to_excel(export_year)
-            st.download_button(
-                label="📥 Télécharger Excel",
-                data=excel_data,
-                file_name=f"planning_{export_year}.xlsx",
-            )
 
     col1, col2 = st.columns(2)
 
@@ -173,6 +156,32 @@ else:
             st.warning("Aucune donnée disponible pour générer des statistiques")
     else:
         st.warning("⚠️ Veuillez sélectionner au moins un trimestre")
+
+    # ===== EXPORT EXCEL =====
+    st.markdown("---")
+    st.markdown("### 📥 Export Excel")
+
+    export_year = datetime.now().year
+    if years:
+        export_year = years[0]
+
+    col_dl1, col_dl2 = st.columns(2)
+    with col_dl1:
+        excel_data = storage.export_to_excel(export_year)
+        st.download_button(
+            label="📥 Excel détaillé",
+            data=excel_data,
+            file_name=f"planning_{export_year}.xlsx",
+            use_container_width=True,
+        )
+    with col_dl2:
+        excel_data_grouped = storage.export_to_excel(export_year, grouped_majo=True)
+        st.download_button(
+            label="📥 Excel Majo groupé",
+            data=excel_data_grouped,
+            file_name=f"planning_{export_year}_majo.xlsx",
+            use_container_width=True,
+        )
 
 # ===== SIDEBAR : INFO GITHUB =====
 with st.sidebar:
