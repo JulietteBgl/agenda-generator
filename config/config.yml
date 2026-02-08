@@ -67,4 +67,4 @@ sites:
     - 2
     - 3
     - 4
-nb_vacations: 2
+nb_vacations: 2 # currently not used - todo: implement vacation handling
