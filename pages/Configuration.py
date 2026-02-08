@@ -53,7 +53,8 @@ st.set_page_config(
 st.title("⚙️ Configuration des Sites")
 
 # Load current configuration
-config = load_config('config/config.yml')
+config_full = load_config('config/config.yml')
+config = config_full.get('sites', {})
 
 # Initialize session state for configuration
 if 'config_modified' not in st.session_state:
@@ -193,7 +194,8 @@ col1, col2 = st.columns([1, 1])
 with col1:
     if st.button("💾 Sauvegarder", type="primary"):
         # First save locally
-        if save_config(st.session_state.config_modified):
+        config_to_save = {'sites': st.session_state.config_modified, 'nb_vacations': config_full.get('nb_vacations', 2)}
+        if save_config(config_to_save):
             try:
                 sync = GitHubSync()
                 if sync.enabled:

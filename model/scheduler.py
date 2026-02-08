@@ -12,14 +12,15 @@ class ScheduleAllocator:
     """Classe principale pour l'allocation du planning"""
 
     def __init__(self, config: Dict, working_days: List[date]):
-        self.config = config
+        self.config = config['sites']
+        self.nb_vacations = config.get('nb_vacations', 2)
         self.working_days = working_days
-        self.total_slots = len(working_days) * 2
+        self.total_slots = len(working_days) * self.nb_vacations
         self.schedule = defaultdict(list)
 
-        self.majorelle_sites = [k for k in config if k.startswith('majorelle_')]
-        self.majorelle_manager = MajorelleManager(self.majorelle_sites, config)
-        self.constraint_validator = ScheduleValidator(config)
+        self.majorelle_sites = [k for k in self.config if k.startswith('majorelle_')]
+        self.majorelle_manager = MajorelleManager(self.majorelle_sites, self.config)
+        self.constraint_validator = ScheduleValidator(self.config)
 
     def allocate(self) -> Dict[date, List[str]]:
         print('Total slots to allocate:', self.total_slots)

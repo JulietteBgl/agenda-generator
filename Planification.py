@@ -66,7 +66,7 @@ default_start_date = max(selected_date, date.today())
 
 # Load config and make a deep copy to avoid modifying the original
 config_original = load_config('config/config.yml')
-config = copy.deepcopy(config_original)
+config = copy.deepcopy(config_original['sites'])
 
 st.markdown("### Configuration des congés")
 
@@ -190,7 +190,7 @@ with col1:
         else:
             working_days, public_holidays = get_working_days(selected_date, end_date)
 
-            schedule_full = ScheduleAllocator(config, working_days).allocate()
+            schedule_full = ScheduleAllocator(config_original, working_days).allocate()
 
             st.session_state.df_schedule = schedule_to_dataframe(schedule_full)
             st.session_state.generated_for = st.session_state.selected_date
