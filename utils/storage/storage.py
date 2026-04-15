@@ -1,9 +1,21 @@
+import calendar
 from io import BytesIO
 
 import pandas as pd
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, date
 from typing import Optional, Dict, List
+
+FRENCH_MONTHS = {
+    1: 'Janvier', 2: 'Février', 3: 'Mars', 4: 'Avril',
+    5: 'Mai', 6: 'Juin', 7: 'Juillet', 8: 'Août',
+    9: 'Septembre', 10: 'Octobre', 11: 'Novembre', 12: 'Décembre'
+}
+
+FRENCH_DAYS = {
+    0: 'Lundi', 1: 'Mardi', 2: 'Mercredi', 3: 'Jeudi',
+    4: 'Vendredi', 5: 'Samedi', 6: 'Dimanche'
+}
 
 
 class ScheduleStorage:
@@ -130,7 +142,7 @@ class ScheduleStorage:
 
     def export_to_excel(self, year: int, grouped_majo: bool = False) -> BytesIO:
         """
-        Create an Excel file with one tab per semester along with one total tab
+        Create an Excel file with one tab per month and one total statistics tab.
 
         Args:
             year: Year to export
@@ -153,11 +165,36 @@ class ScheduleStorage:
                 'valign': 'vcenter'
             })
 
+            month_title_format = workbook.add_format({
+                'bold': True,
+                'font_size': 14,
+                'bg_color': '#4472C4',
+                'font_color': 'white',
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter'
+            })
+
+            red_header_format = workbook.add_format({
+                'bold': True,
+                'font_color': 'red',
+                'border': 1,
+                'align': 'center',
+                'valign': 'vcenter'
+            })
+
             cell_format = workbook.add_format({
                 'border': 1,
                 'align': 'left',
                 'valign': 'top',
                 'text_wrap': True
+            })
+
+            weekend_format = workbook.add_format({
+                'border': 1,
+                'align': 'left',
+                'valign': 'top',
+                'bg_color': '#D9D9D9'
             })
 
             all_schedules = self.get_all()
@@ -169,86 +206,110 @@ class ScheduleStorage:
             if not year_schedules:
                 df_empty = pd.DataFrame({'Message': ['Aucun planning pour cette année']})
                 df_empty.to_excel(writer, sheet_name='Aucune donnée', index=False)
+                buffer.seek(0)
                 return buffer
 
-            sorted_schedules = sorted(year_schedules.items(), key=lambda x: x[1]['quarter'])
+            # Load all planning data for the year
+            all_planning = []
+            for schedule_id in year_schedules:
+                df_planning = self.load(schedule_id)
+                if df_planning is not None:
+                    all_planning.append(df_planning)
 
-            # Create one tab per semester
+            if not all_planning:
+                df_empty = pd.DataFrame({'Message': ['Aucune donnée de planning']})
+                df_empty.to_excel(writer, sheet_name='Aucune donnée', index=False)
+                buffer.seek(0)
+                return buffer
+
+            df_all = pd.concat(all_planning, ignore_index=True)
+            df_all['Date'] = pd.to_datetime(df_all['Date'])
+
+            if grouped_majo:
+                for col in ['Affectation 1', 'Affectation 2']:
+                    df_all[col] = df_all[col].apply(
+                        lambda x: 'Majo' if pd.notna(x) and str(x).startswith('Majo') else x
+                    )
+
+            # Build a lookup: date -> (aff1, aff2)
+            planning_lookup = {}
+            for _, row in df_all.iterrows():
+                planning_lookup[row['Date'].date()] = (
+                    row.get('Affectation 1', ''),
+                    row.get('Affectation 2', '')
+                )
+
+            # Get all months present in the data
+            months_in_data = sorted(df_all['Date'].dt.to_period('M').unique())
+
+            for period in months_in_data:
+                month_num = period.month
+                year_val = period.year
+                month_name = FRENCH_MONTHS[month_num]
+                sheet_name = f"{month_name} {year_val}"[:31]
+
+                worksheet = workbook.add_worksheet(sheet_name)
+                writer.sheets[sheet_name] = worksheet
+
+                # Row 0: headers
+                worksheet.write(0, 0, f"{month_name} {year_val}", month_title_format)
+                worksheet.write(0, 1, '', header_format)
+                worksheet.write(0, 2, 'Place 1', header_format)
+                worksheet.write(0, 3, 'Aff 1', header_format)
+                worksheet.write(0, 4, 'Place 2', header_format)
+                worksheet.write(0, 5, 'Aff 2', header_format)
+                worksheet.write(0, 6, 'POSE PRIORITAIRE', red_header_format)
+
+                # Rows 1..N: every day of the month
+                num_days = calendar.monthrange(year_val, month_num)[1]
+
+                for day in range(1, num_days + 1):
+                    date_obj = date(year_val, month_num, day)
+                    day_of_week = date_obj.weekday()
+                    day_name = FRENCH_DAYS[day_of_week]
+                    is_weekend = day_of_week >= 5
+                    row_idx = day  # row 1 = day 1
+
+                    fmt = weekend_format if is_weekend else cell_format
+
+                    worksheet.write(row_idx, 0, day_name, fmt)
+                    worksheet.write(row_idx, 1, day, fmt)
+
+                    if date_obj in planning_lookup and not is_weekend:
+                        aff1, aff2 = planning_lookup[date_obj]
+                        for aff, col_place, col_detail in [(aff1, 2, 3), (aff2, 4, 5)]:
+                            val = str(aff).strip() if pd.notna(aff) else ''
+                            if '-' in val:
+                                parts = val.split('-', 1)
+                                worksheet.write(row_idx, col_place, parts[0].strip(), fmt)
+                                worksheet.write(row_idx, col_detail, parts[1].strip(), fmt)
+                            else:
+                                worksheet.write(row_idx, col_place, val, fmt)
+                                worksheet.write(row_idx, col_detail, '', fmt)
+                    else:
+                        for c in range(2, 6):
+                            worksheet.write(row_idx, c, '', fmt)
+
+                    worksheet.write(row_idx, 6, '', fmt)
+
+                # Column widths
+                worksheet.set_column(0, 0, 14)
+                worksheet.set_column(1, 1, 6)
+                worksheet.set_column(2, 5, 18)
+                worksheet.set_column(6, 6, 22)
+
+            # ===== Total statistics tab =====
+            sorted_schedules = sorted(year_schedules.items(), key=lambda x: x[1]['quarter'])
             all_stats_for_total = []
 
             for schedule_id, meta in sorted_schedules:
-                quarter = meta['quarter']
-                df_planning = self.load(schedule_id)
+                if grouped_majo:
+                    stats = self._get_statistics_grouped_majo([schedule_id])
+                else:
+                    stats = self.get_statistics([schedule_id])
+                if not stats.empty:
+                    all_stats_for_total.append(stats)
 
-                if df_planning is not None and not df_planning.empty:
-                    sheet_name = f"T{quarter}"
-
-                    worksheet = workbook.add_worksheet(sheet_name)
-                    writer.sheets[sheet_name] = worksheet
-
-                    df = df_planning.copy()
-
-                    if grouped_majo:
-                        for col in ['Affectation 1', 'Affectation 2']:
-                            df[col] = df[col].apply(
-                                lambda x: 'Majo' if pd.notna(x) and str(x).startswith('Majo') else x
-                            )
-                    df['Date'] = pd.to_datetime(df['Date'])
-                    df['DayOfWeek'] = df['Date'].dt.dayofweek
-                    df['WeekNumber'] = df['Date'].dt.isocalendar().week
-                    df['Year'] = df['Date'].dt.year
-
-                    df_weekdays = df[df['DayOfWeek'] <= 4].copy()
-
-                    site_columns = ['Affectation 1', 'Affectation 2']
-
-                    worksheet.set_column('A:E', 20)
-
-                    row = 0
-                    days_of_week = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi']
-
-                    for (year_val, week), week_data in df_weekdays.groupby(['Year', 'WeekNumber'], sort=True):
-                        week_dates = {}
-                        for _, day_row in week_data.iterrows():
-                            day_of_week = day_row['DayOfWeek']
-                            week_dates[day_of_week] = day_row['Date']
-
-                        for day_idx in range(5):
-                            if day_idx in week_dates:
-                                date_str = week_dates[day_idx].strftime('%d/%m')
-                                worksheet.write(row, day_idx, f"{days_of_week[day_idx]} {date_str}", header_format)
-                            else:
-                                worksheet.write(row, day_idx, days_of_week[day_idx], header_format)
-
-                        row += 1
-
-                        for site_col in site_columns:
-                            for day_idx in range(5):
-                                if day_idx in week_dates:
-                                    day_data = week_data[week_data['DayOfWeek'] == day_idx]
-                                    if not day_data.empty:
-                                        value = day_data.iloc[0][site_col]
-                                        if pd.notna(value) and value != '':
-                                            worksheet.write(row, day_idx, str(value), cell_format)
-                                        else:
-                                            worksheet.write(row, day_idx, '', cell_format)
-                                    else:
-                                        worksheet.write(row, day_idx, '', cell_format)
-                                else:
-                                    worksheet.write(row, day_idx, '', cell_format)
-
-                            row += 1
-
-                        row += 1
-
-                    if grouped_majo:
-                        stats = self._get_statistics_grouped_majo([schedule_id])
-                    else:
-                        stats = self.get_statistics([schedule_id])
-                    if not stats.empty:
-                        all_stats_for_total.append(stats)
-
-            # Create the total tab
             if all_stats_for_total:
                 df_total = pd.concat(all_stats_for_total, axis=1)
                 df_total = df_total.T.groupby(level=0).sum().T
@@ -259,7 +320,6 @@ class ScheduleStorage:
                 df_total = df_total.sort_values('Total', ascending=False)
 
                 if not grouped_majo:
-                    # Only re-group Majo rows when not already grouped
                     df_total_simplified = df_total.copy()
                     majo_rows = df_total_simplified.index.str.startswith('Majo')
 

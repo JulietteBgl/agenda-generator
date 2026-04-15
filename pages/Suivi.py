@@ -171,7 +171,7 @@ else:
         st.download_button(
             label="📥 Excel détaillé",
             data=excel_data,
-            file_name=f"planning_{export_year}.xlsx",
+            file_name=f"planning_{export_year}_complet.xlsx",
             use_container_width=True,
         )
     with col_dl2:
@@ -179,7 +179,7 @@ else:
         st.download_button(
             label="📥 Excel Majo groupé",
             data=excel_data_grouped,
-            file_name=f"planning_{export_year}_majo.xlsx",
+            file_name=f"planning_{export_year}.xlsx",
             use_container_width=True,
         )
 
