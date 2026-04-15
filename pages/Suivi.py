@@ -165,23 +165,38 @@ else:
     if years:
         export_year = years[0]
 
-    col_dl1, col_dl2 = st.columns(2)
-    with col_dl1:
-        excel_data = storage.export_to_excel(export_year)
-        st.download_button(
-            label="📥 Excel détaillé",
-            data=excel_data,
-            file_name=f"planning_{export_year}_complet.xlsx",
-            use_container_width=True,
-        )
-    with col_dl2:
-        excel_data_grouped = storage.export_to_excel(export_year, grouped_majo=True)
-        st.download_button(
-            label="📥 Excel Majo groupé",
-            data=excel_data_grouped,
-            file_name=f"planning_{export_year}.xlsx",
-            use_container_width=True,
-        )
+    export_available_quarters = sorted([
+        sid for sid, meta in all_schedules.items()
+        if meta['year'] == export_year
+    ])
+
+    export_selected = st.multiselect(
+        "Trimestres à exporter",
+        options=export_available_quarters,
+        default=export_available_quarters,
+        format_func=lambda x: f"T{all_schedules[x]['quarter']} {all_schedules[x]['year']}"
+    )
+
+    if export_selected:
+        col_dl1, col_dl2 = st.columns(2)
+        with col_dl1:
+            excel_data = storage.export_to_excel(export_year, schedule_ids=export_selected)
+            st.download_button(
+                label="📥 Excel détaillé",
+                data=excel_data,
+                file_name=f"planning_{export_year}_complet.xlsx",
+                use_container_width=True,
+            )
+        with col_dl2:
+            excel_data_grouped = storage.export_to_excel(export_year, grouped_majo=True, schedule_ids=export_selected)
+            st.download_button(
+                label="📥 Excel Majo groupé",
+                data=excel_data_grouped,
+                file_name=f"planning_{export_year}.xlsx",
+                use_container_width=True,
+            )
+    else:
+        st.warning("⚠️ Veuillez sélectionner au moins un trimestre à exporter")
 
 # ===== SIDEBAR : INFO GITHUB =====
 with st.sidebar:

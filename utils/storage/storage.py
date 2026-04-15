@@ -140,13 +140,14 @@ class ScheduleStorage:
 
     #create_excel_export
 
-    def export_to_excel(self, year: int, grouped_majo: bool = False) -> BytesIO:
+    def export_to_excel(self, year: int, grouped_majo: bool = False, schedule_ids: Optional[List[str]] = None) -> BytesIO:
         """
         Create an Excel file with one tab per month and one total statistics tab.
 
         Args:
             year: Year to export
             grouped_majo: If True, all 'Majo - xxx' sites are replaced by 'Majo'
+            schedule_ids: If provided, only include these specific schedules
 
         Returns:
             BytesIO: Excel file in memory
@@ -198,10 +199,16 @@ class ScheduleStorage:
             })
 
             all_schedules = self.get_all()
-            year_schedules = {
-                sid: meta for sid, meta in all_schedules.items()
-                if meta['year'] == year
-            }
+            if schedule_ids:
+                year_schedules = {
+                    sid: meta for sid, meta in all_schedules.items()
+                    if sid in schedule_ids
+                }
+            else:
+                year_schedules = {
+                    sid: meta for sid, meta in all_schedules.items()
+                    if meta['year'] == year
+                }
 
             if not year_schedules:
                 df_empty = pd.DataFrame({'Message': ['Aucun planning pour cette année']})
