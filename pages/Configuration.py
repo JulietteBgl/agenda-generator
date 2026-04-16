@@ -172,6 +172,18 @@ for site_key, site_config in st.session_state.config_modified.items():
                 key=f"pair_{site_key}"
             )
             st.session_state.config_modified[site_key]['pair_same_day'] = pair_same_day
+
+            # Display name for Excel export
+            display_name = st.text_input(
+                "Nom affiché dans Excel",
+                value=site_config.get('display_name', ''),
+                key=f"display_name_{site_key}",
+                help="Nom du médecin affiché dans les colonnes de l'export Excel"
+            )
+            if display_name.strip():
+                st.session_state.config_modified[site_key]['display_name'] = display_name.strip()
+            elif 'display_name' in st.session_state.config_modified[site_key]:
+                del st.session_state.config_modified[site_key]['display_name']
         
         with col2:
             st.markdown("**Actions**")

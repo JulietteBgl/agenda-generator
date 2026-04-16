@@ -8,6 +8,7 @@ sites:
     - 3
     - 4
     pair_same_day: false
+    display_name: BASSNAGEL
   majorelle_cg:
     name: Majo - CG
     advanced_split: true
@@ -16,6 +17,7 @@ sites:
     - 2
     - 4
     pair_same_day: false
+    display_name: GRENTZINGER
   majorelle_mb:
     name: Majo - MB
     advanced_split: true
@@ -24,6 +26,7 @@ sites:
     - 2
     - 4
     pair_same_day: false
+    display_name: BAYLE
   icl:
     name: ICL
     advanced_split: false
@@ -75,4 +78,5 @@ sites:
     - 1
     - 3
     pair_same_day: false
+    display_name: FERRIOL
 nb_vacations: 2

@@ -2,6 +2,7 @@ import calendar
 from io import BytesIO
 
 import pandas as pd
+import yaml
 from pathlib import Path
 from datetime import datetime, date
 from typing import Optional, Dict, List
@@ -16,6 +17,20 @@ FRENCH_DAYS = {
     0: 'Lundi', 1: 'Mardi', 2: 'Mercredi', 3: 'Jeudi',
     4: 'Vendredi', 5: 'Samedi', 6: 'Dimanche'
 }
+
+
+def _load_display_name_map(config_path: str = "config/config.yml") -> Dict[str, str]:
+    """Build a mapping from site name to display_name from config."""
+    try:
+        with open(config_path, 'r', encoding='utf-8') as f:
+            config = yaml.safe_load(f)
+        return {
+            site['name']: site['display_name']
+            for site in config.get('sites', {}).values()
+            if 'display_name' in site
+        }
+    except Exception:
+        return {}
 
 
 class ScheduleStorage:
@@ -248,6 +263,7 @@ class ScheduleStorage:
 
             # Get all months present in the data
             months_in_data = sorted(df_all['Date'].dt.to_period('M').unique())
+            display_name_map = _load_display_name_map()
 
             for period in months_in_data:
                 month_num = period.month
@@ -261,10 +277,10 @@ class ScheduleStorage:
                 # Row 0: headers
                 worksheet.write(0, 0, f"{month_name} {year_val}", month_title_format)
                 worksheet.write(0, 1, '', header_format)
-                worksheet.write(0, 2, 'Place 1', header_format)
-                worksheet.write(0, 3, 'Aff 1', header_format)
-                worksheet.write(0, 4, 'Place 2', header_format)
-                worksheet.write(0, 5, 'Aff 2', header_format)
+                worksheet.write(0, 2, 'Poste 1', header_format)
+                worksheet.write(0, 3, 'Médecin 1', header_format)
+                worksheet.write(0, 4, 'Poste 2', header_format)
+                worksheet.write(0, 5, 'Médecin 2', header_format)
                 worksheet.write(0, 6, 'POSE PRIORITAIRE', red_header_format)
 
                 # Rows 1..N: every day of the month
@@ -286,10 +302,13 @@ class ScheduleStorage:
                         aff1, aff2 = planning_lookup[date_obj]
                         for aff, col_place, col_detail in [(aff1, 2, 3), (aff2, 4, 5)]:
                             val = str(aff).strip() if pd.notna(aff) else ''
-                            if '-' in val:
+                            display = display_name_map.get(val, '')
+                            if display:
                                 parts = val.split('-', 1)
                                 worksheet.write(row_idx, col_place, parts[0].strip(), fmt)
-                                worksheet.write(row_idx, col_detail, parts[1].strip(), fmt)
+                                # Use display_name from config for col D/F
+                                worksheet.write(row_idx, col_detail, display, fmt)
+                                
                             else:
                                 worksheet.write(row_idx, col_place, val, fmt)
                                 worksheet.write(row_idx, col_detail, '', fmt)
