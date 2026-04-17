@@ -19,8 +19,10 @@ FRENCH_DAYS = {
 }
 
 
-def _load_display_name_map(config_path: str = "config/config.yml") -> Dict[str, str]:
+def _load_display_name_map(config_path: str = None) -> Dict[str, str]:
     """Build a mapping from site name to display_name from config."""
+    if config_path is None:
+        config_path = Path(__file__).parent.parent.parent / "config" / "config.yml"
     try:
         with open(config_path, 'r', encoding='utf-8') as f:
             config = yaml.safe_load(f)
