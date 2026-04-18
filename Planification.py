@@ -169,6 +169,7 @@ with st.expander("Ajouter des congés (plages ou dates)", expanded=False):
 
             # Update the config with all holidays (removing duplicates)
             place_cfg['holidays'] = list(set(holidays_list))
+            config_full['sites'][place_key]['holidays'] = place_cfg['holidays']
             st.session_state.holidays_config[place_key]['holidays'] = place_cfg['holidays']
 
 for key in ["df_schedule", "df_schedule_simple"]:
@@ -349,9 +350,9 @@ if show_tables and st.session_state.df_schedule is not None:
                 df_fridays = df_fridays.sort_values('Site Majorelle')
 
                 def get_status(count):
-                    if count == 4:
+                    if count == 3:
                         return "✅ Optimal"
-                    elif count in [3, 5]:
+                    elif count in [2, 4]:
                         return "⚠️ Acceptable"
                     else:
                         return "❌ À revoir"
@@ -361,14 +362,14 @@ if show_tables and st.session_state.df_schedule is not None:
 
                 st.dataframe(df_fridays, hide_index=True, width='stretch')
 
-                problematic = (~df_fridays['Nombre de vendredis'].isin([3, 4, 5])).sum()
+                problematic = (~df_fridays['Nombre de vendredis'].isin([2, 3, 4])).sum()
 
                 if problematic == 0:
-                    st.success("✅ Tous les sites Majorelle ont une allocation correcte de vendredis (3-5)")
+                    st.success("✅ Tous les sites Majorelle ont une allocation correcte de vendredis (2-4)")
                 else:
                     st.warning(f"⚠️ {problematic} site(s) Majorelle ont une allocation incorrecte de vendredis")
 
-                st.info("💡 Objectif : 4 vendredis par site Majorelle, avec une flexibilité de 3-5 vendredis acceptée")
+                st.info("💡 Objectif : 3 vendredis par site Majorelle, avec une flexibilité de 2-4 vendredis acceptée")
             else:
                 st.info("Aucune donnée de vendredis trouvée pour les sites Majorelle")
         else:

@@ -17,7 +17,7 @@ class MajorelleManager:
     def allocate_fridays(self, working_days: List[date]) -> Dict[str, List[date]]:
         """
         Allocates Fridays to Majorelle sites.
-        Each site should have 4 fridays in the targeted semester.
+        Each site should have 3 fridays in the targeted semester.
         Takes into account site availability (holidays/vacations).
         """
         fridays = [day for day in working_days if day.weekday() == 4]
@@ -32,14 +32,14 @@ class MajorelleManager:
                 if self.constraints_validator.is_available(site, friday)
             ]
 
-            if len(site_available_fridays[site]) < 4:
+            if len(site_available_fridays[site]) < 3:
                 print(f"Warning: Site {self.config[site]['name']} has only "
-                      f"{len(site_available_fridays[site])} Fridays available (need 4)")
+                      f"{len(site_available_fridays[site])} Fridays available (need 3)")
 
-        total_allocations_possible = sum(min(len(fridays), 4) for fridays in site_available_fridays.values())
+        total_allocations_possible = sum(min(len(fridays), 3) for fridays in site_available_fridays.values())
 
-        if total_allocations_possible < len(self.majorelle_sites) * 4:
-            print(f"Warning: Cannot allocate 4 Fridays to all Majorelle sites due to availability constraints")
+        if total_allocations_possible < len(self.majorelle_sites) * 3:
+            print(f"Warning: Cannot allocate 3 Fridays to all Majorelle sites due to availability constraints")
 
         self._allocate_with_availability(fridays, site_available_fridays)
 
@@ -66,7 +66,7 @@ class MajorelleManager:
                 available_sites = [
                     site for site in sites_needing_friday
                     if friday in site_available_fridays[site]
-                       and len(self.friday_allocation[site]) < 4
+                       and len(self.friday_allocation[site]) < 3
                        and not self._is_friday_allocated(friday)
                 ]
 
@@ -85,7 +85,7 @@ class MajorelleManager:
                     if not self._is_friday_allocated(f)
                 ]
 
-                for friday in remaining_fridays[:4 - current_count]:
+                for friday in remaining_fridays[:3 - current_count]:
                     self.friday_allocation[site].append(friday)
 
                 self.friday_allocation[site].sort()
@@ -93,7 +93,7 @@ class MajorelleManager:
         print("\n=== Friday allocation for Majorelle sites ===")
         for site in self.majorelle_sites:
             allocated_count = len(self.friday_allocation[site])
-            status = "✓" if allocated_count == 4 else f"⚠ ({allocated_count}/4)"
+            status = "✓" if allocated_count == 3 else f"⚠ ({allocated_count}/3)"
             print(f"{self.config[site]['name']}: {status}")
             if allocated_count < 4:
                 holidays = self.config[site].get('holidays', [])
@@ -102,16 +102,16 @@ class MajorelleManager:
 
     @staticmethod
     def _split_fridays_into_periods(fridays: List[date]) -> List[List[date]]:
-        """Split Fridays into 4 periods for even distribution"""
+        """Split Fridays into 3 periods for even distribution"""
         if not fridays:
-            return [[], [], [], []]
+            return [[], [], []]
 
-        period_size = len(fridays) // 4
+        period_size = len(fridays) // 3
         periods = []
 
-        for i in range(4):
+        for i in range(3):
             start_idx = i * period_size
-            if i == 3:
+            if i == 2:
                 periods.append(fridays[start_idx:])
             else:
                 periods.append(fridays[start_idx:start_idx + period_size])
@@ -129,7 +129,7 @@ class MajorelleManager:
 
         for site in self.majorelle_sites:
             if site in self.friday_allocation and day in self.friday_allocation[site]:
-                if self.friday_used[site] < 4:
+                if self.friday_used[site] < 3:
                     # Double-check availability in case config changed
                     if self.constraints_validator.is_available(site, day):
                         return site
@@ -153,7 +153,7 @@ class MajorelleManager:
             return True
 
         current_count = self.get_friday_count(site)
-        max_allowed = 5 if is_backfilling else 4
+        max_allowed = 4 if is_backfilling else 3
         return current_count < max_allowed
 
     def get_future_friday_count(self, site: str, current_date: date, include_current: bool = False) -> int:

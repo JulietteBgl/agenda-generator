@@ -357,7 +357,7 @@ class ScheduleAllocator:
               f"tentative avec les sites Majorelle...")
 
         donor_candidates = [s for s in self.majorelle_sites
-                            if majorelle_friday_count[s] >= 4 and s != site_under]
+                            if majorelle_friday_count[s] >= 3 and s != site_under]
         donor_candidates.sort(key=lambda s: -majorelle_friday_count[s])
 
         for donor_site in donor_candidates:
@@ -453,15 +453,15 @@ class ScheduleAllocator:
 
     def _print_final_friday_verification(self):
         print("\n=== Vérification finale des vendredis Majorelle ===")
-        print("Objectif: 4 vendredis par site (flexibilité 3-5 acceptée si nécessaire)")
+        print("Objectif: 3 vendredis par site (flexibilité 2-4 acceptée si nécessaire)")
 
         final_counts = self._count_majorelle_fridays()
 
         for site in self.majorelle_sites:
             count = final_counts[site]
-            if count == 4:
+            if count == 3:
                 status = "✓ Objectif atteint"
-            elif count in [3, 5]:
+            elif count in [2, 4]:
                 status = "⚠ Acceptable (flexibilité)"
             else:
                 status = "✗ Hors limites"
