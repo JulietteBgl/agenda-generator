@@ -70,6 +70,7 @@ sites:
     - 2
     - 3
     - 4
+    display_name: JUNG
   majorelle_mpf:
     name: Majo - MPF
     advanced_split: true
