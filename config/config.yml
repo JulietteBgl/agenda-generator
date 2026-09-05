@@ -1,6 +1,6 @@
 sites:
   majorelle_pb:
-    name: Majo - PB
+    name: Imalo - PB
     advanced_split: true
     nb_radiologists: 1
     available_weekdays:
@@ -10,7 +10,7 @@ sites:
     pair_same_day: false
     display_name: BASSNAGEL
   majorelle_cg:
-    name: Majo - CG
+    name: Imalo - CG
     advanced_split: true
     nb_radiologists: 1
     available_weekdays:
@@ -19,7 +19,7 @@ sites:
     pair_same_day: false
     display_name: GRENTZINGER
   majorelle_mb:
-    name: Majo - MB
+    name: Imalo - MB
     advanced_split: true
     nb_radiologists: 1
     available_weekdays:
@@ -51,7 +51,7 @@ sites:
   stdizier:
     name: St Dizier
     advanced_split: false
-    nb_radiologists: 4
+    nb_radiologists: 2
     pair_same_day: false
     available_weekdays:
     - 0
@@ -72,7 +72,7 @@ sites:
     - 4
     display_name: JUNG
   majorelle_mpf:
-    name: Majo - MPF
+    name: Imalo - MPF
     advanced_split: true
     nb_radiologists: 1
     available_weekdays:
