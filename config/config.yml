@@ -51,7 +51,7 @@ sites:
   stdizier:
     name: St Dizier
     advanced_split: false
-    nb_radiologists: 3
+    nb_radiologists: 2
     pair_same_day: false
     available_weekdays:
     - 0
